@@ -1,0 +1,17 @@
+
+
+<form class="sqr-comment-form" action="{{url}}" method="POST">
+  <input name="username"></input>
+  <input name="email"></input>
+  <textarea name="body"></textarea>
+</form>
+
+{{#each comments}}
+  <div class="sqr-comment">
+    <img class="sqr-gravatar" src="{{gravatarUrl}}"></img>
+    <span class="sqr-username">{{username}}</span><span class="sqr-date">{{date}}</span>
+    <p>
+      {{postbody}}
+    </p>
+  </div>
+{{/each}}

@@ -1,10 +1,10 @@
 var stream = require('stream');
 
-module.exports = function () {
+module.exports = function (templateFunction) {
   var stringifier = new stream.Transform();
   stringifier._writableState.objectMode = true;
   stringifier._transform = function (data, encoding, done) {
-      this.push(JSON.stringify(data));
+      this.push(templateFunction(data));
       this.push('\n');
       done();
   }
