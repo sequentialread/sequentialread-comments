@@ -1,9 +1,16 @@
 
 
-<form class="sqr-comment-form" action="{{url}}" method="POST">
-  <input name="username"></input>
-  <input name="email"></input>
+
+<form class="sqr-comment-form" method="POST">
+  <label>
+    Name: <input name="username"></input>
+  </label>
+  <label>
+    Email: <input name="email"></input> (optional, not shown, used for Gravatar)
+  </label>
   <textarea name="body"></textarea>
+  <div class="g-recaptcha" data-sitekey="{{recaptchaSiteKey}}"></div>
+  <input type="submit"></input>
 </form>
 
 {{#each comments}}
