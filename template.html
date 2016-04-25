@@ -1,4 +1,8 @@
+<h3>Comments</h3>
 
+<button class="btn btn-highlight reply">
+<i class=" fa fa-reply"></i>  reply
+</button>
 
 
 <form class="sqr-comment-form" method="POST">
@@ -8,17 +12,33 @@
   <label>
     Email: <input name="email"></input> (optional, not shown, used for Gravatar)
   </label>
-  <textarea name="body"></textarea>
-  <div class="g-recaptcha" data-sitekey="{{recaptchaSiteKey}}"></div>
-  <input type="submit"></input>
+  <textarea name="body" rows="5">
+  </textarea>
+  <div class="sqr-submit-area">
+    <div class="g-recaptcha"
+     data-sitekey="{{recaptchaSiteKey}}"
+     data-callback="recaptchaCompleted" ></div>
+    <button class="btn btn-highlight submit" disabled="true">submit</button>
+  </div>
 </form>
 
-{{#each comments}}
-  <div class="sqr-comment">
-    <img class="sqr-gravatar" src="{{gravatarUrl}}"></img>
-    <span class="sqr-username">{{username}}</span><span class="sqr-date">{{date}}</span>
-    <p>
-      {{postbody}}
-    </p>
-  </div>
+{{#each errors}}
+  {{#if message}}
+    Error: {{message}}
+  {{/if}}
 {{/each}}
+
+{{#if comments.length}}
+  {{#each comments}}
+    <div class="sqr-comment">
+      <img class="sqr-gravatar" src="{{gravatarUrl}}"></img>
+      <span class="sqr-username">{{username}}</span><span class="sqr-date">{{date}}</span>
+      <span class="sqr-userid">{{userId}}</span>
+      <p>
+        {{body}}
+      </p>
+    </div>
+  {{/each}}
+{{else}}
+  There are no comments on this post yet. Your comment could be the first!
+{{/if}}

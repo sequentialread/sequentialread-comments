@@ -5,52 +5,87 @@ var levelup = require('levelup');
 var uuid = require('node-uuid');
 var fs = require('fs');
 var https = require('https');
+var url = require('url');
 var querystring = require('querystring');
 var Handlebars = require('handlebars');
+var _ = require('lodash');
+var md5 = require('md5');
 
-var settings = require('./secrets');
+var settings = require('./settings');
 
-var template = Handlebars.compile(fs.readFileSync('./template.html', 'utf8'), settings);
+var templateHandlebars = Handlebars.compile(fs.readFileSync('./template.html', 'utf8'));
+var template = function(data) {
+  return templateHandlebars(_.merge(settings, data));
+};
 
 var app = express();
-app.use( bodyParser.urlencoded() );
-var dbRaw = levelup('data/comments3.db', { valueEncoding: 'json' });
+app.use( bodyParser.json() );
+var dbRaw = levelup('data/comments7.db', { valueEncoding: 'json' });
 
 var publishAtPort = process.env.PORT || 2369;
 
+app.use(function (req, res, next) {
+  var referer = url.parse(req.headers.referer);
+  var origin = referer.protocol+(referer.slashes ? '//' : '')+referer.host;
+  if(settings.origins.some(x => x === origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', ['POST', 'GET', 'OPTIONS']);
+    res.setHeader('Access-Control-Allow-Headers', ['Content-Type']);
+  }
+  next();
+});
+
+app.use(express.static('static'));
+
 app.get('/comments/*', function(req, res) {
-
-
   var documentId = validateDocId(req.params[0], res);
-  getComments(documentId, function(err, comments) {
-    console.log(err);
-    console.log(comments);
-    if(err) {
-      res.send(err);
-    } else {
-      res.send(template({comments: comments}));
-    }
-  });
+  commentsResponse(0, documentId, res);
 });
 
 app.post('/comments/*', function(req, res) {
   var documentId = validateDocId(req.params[0], res);
-  console.log(req);
-  postComment(documentId, req.body, function(err) {
-    res.sendStatus(err ? 500 : 200);
+  validateCaptcha(req.body['g-recaptcha-response'], function(err) {
+    if(!err) {
+      delete req.body['g-recaptcha-response'];
+
+      postComment(documentId, req.body, function(err) {
+        commentsResponse(err, documentId, res);
+      });
+    } else {
+      commentsResponse(err, documentId, res);
+    }
   });
 });
 
-// app.post('/reply/*/*', function(req, res) {
-//   res.send('hello world');
-// });
+function commentsResponse(error, documentId, res) {
+  getComments(documentId, function(getCommentsError, comments) {
+    console.log({comments: comments, errors: [error, getCommentsError]});
+    res.send(template({
+      comments: comments.map(x => x.value),
+      errors: [error, getCommentsError]
+    }));
+  });
+}
 
 function postComment (documentId, body, callback) {
   if(!documentId) {
-    callback(new Error("no documentId provided"));
+    callback(errorWithMessage("invalid documentId"));
     return;
   }
-  console.log(body);
+
+  var hash = md5(body.email.toLowerCase().trim());
+  console.log(hash);
+
+  body.userId = hash.substring(5,5);
+
+  body.gravatarURL = body.email && body.email != '' ?
+      'http://www.gravatar.com/avatar/' + hash
+      : null;
+
+  body.date = Date.now();
+
+  delete body.email;
+
   dbRaw.put(documentId+'\x00'+uuid(), body, function (err) {
     callback(err);
   });
@@ -58,8 +93,7 @@ function postComment (documentId, body, callback) {
 
 function getComments (documentId, callback) {
   if(!documentId) {
-    console.log("no documentId provided");
-    callback(new Error("no documentId provided"));
+    callback(errorWithMessage("invalid documentId"));
     return;
   }
   var buffer = [];
@@ -77,34 +111,41 @@ function getComments (documentId, callback) {
   });
 }
 
+function validateCaptcha(captchaResponse, callback) {
 
-var server = app.listen(publishAtPort, function () {
-  var host = server.address().address;
-  var port = server.address().port;
+  var postdata = querystring.stringify({
+      'secret' : settings.recaptchaSecretKey,
+      'response': captchaResponse
+      //'remoteip': request.connection.remoteAddress
+  });
 
-  console.log('Example app listening at http://%s:%s', host, port);
-});
+  console.log(postdata);
 
-function validateRecaptcha(clientRequest, callback) {
   var options = {
     hostname: settings.recaptchaHost,
     path: settings.recaptchaPath,
     port: 443,
-    method: 'POST'
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(postdata)
+    }
   };
-  var req = https.request(options, (res) => {
-    console.log('statusCode: ', res.statusCode);
-    console.log('headers: ', res.headers);
 
-    res.on('data', (d) => {
-      process.stdout.write(d);
+  var req = https.request(options, (res) => {
+    var data = "";
+    res.on('data', chunk => data += chunk.toString());
+    res.on('end', function() {
+      var parsedData = { success: false };
+      try {
+        parsedData = JSON.parse(data);
+      } catch (ex) {}
+      callback(parsedData.success ? 0 : errorWithMessage('captcha validation failed'));
     });
   });
-  req.write(querystring.stringify({
-      'secret' : settings.recaptchaSecretKey,
-      'response': clientRequest['g-recaptcha-response'],
-      'remoteip': clientRequest.connection.remoteAddress
-  }));
+
+  req.write(postdata);
+
   req.end();
   req.on('error', (e) => {
     console.error(e);
@@ -112,9 +153,22 @@ function validateRecaptcha(clientRequest, callback) {
 }
 
 function validateDocId (input, res) {
-  if(input == null || input.length != 32 || !input.match(/[a-z0-9]*/i)) {
+  if(input == null || input.length > 10 || !input.match(/[a-z0-9]*/i)) {
     return null;
   } else {
     return input;
   }
 }
+
+function errorWithMessage(message) {
+  var error = new Error();
+  error.message = message;
+  return error;
+}
+
+var server = app.listen(publishAtPort, function () {
+  var host = server.address().address;
+  var port = server.address().port;
+
+  console.log('Example app listening at http://%s:%s', host, port);
+});
