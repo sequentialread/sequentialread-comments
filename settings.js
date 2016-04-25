@@ -11,5 +11,10 @@ module.exports = {
     "https://sequentialread.com",
     "http://blog.sequentialread.com",
     "https://blog.sequentialread.com"
-  ]
+  ],
+  emailHost: 'smtp.gmail.com',
+  emailPort: 465,
+  emailUsername: process.env.GMAIL_USER,
+  emailPassword: process.env.GMAIL_PASSWORD,
+  emailNotificationTarget: process.env.EMAIL_NOTIFICATION_TARGET
 };

@@ -24,6 +24,7 @@ marked.setOptions({
 
 
 var settings = require('./settings');
+var emailNotification = require('./emailNotification');
 
 var templateHandlebars = Handlebars.compile(fs.readFileSync('./template.html', 'utf8'));
 var template = function(data) {
@@ -117,6 +118,11 @@ function postComment (documentId, post, callback) {
     dbRaw.put(documentId+'\x00'+datePartOfId, post, function (err) {
       callback(err);
     });
+    try {
+      emailNotification("User " + post.username + " commented " + post.body + " on post #" + documentId);
+    } catch (ex) {
+      console.error(ex.message, ex.stack);
+    }
   }
 }
 
@@ -166,7 +172,9 @@ function validateCaptcha(captchaResponse, callback) {
       var parsedData = { success: false };
       try {
         parsedData = JSON.parse(data);
-      } catch (ex) {}
+      } catch (ex) {
+        console.error(ex.message, ex.stack);
+      }
       callback(parsedData.success ? 0 : errorWithMessage('captcha validation failed'));
     });
   });
