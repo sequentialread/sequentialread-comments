@@ -74,9 +74,7 @@ function commentsResponse(error, documentId, res) {
     res.send(template({
       comments: comments.map(keyValue => {
         var comment = _.clone(keyValue.value);
-        console.log(comment.body);
         comment.body = marked(comment.body);
-        console.log(comment.body);
         return comment;
       }),
       errors: [error, getCommentsError]
