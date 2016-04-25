@@ -27,7 +27,7 @@ var settings = require('./settings');
 
 var templateHandlebars = Handlebars.compile(fs.readFileSync('./template.html', 'utf8'));
 var template = function(data) {
-  return templateHandlebars(_.merge(settings, data));
+  return templateHandlebars(_.merge(data, settings));
 };
 
 var app = express();
@@ -51,13 +51,13 @@ app.use(function (req, res, next) {
 
 app.use(express.static('static'));
 
-app.get('/comments/*', function(req, res) {
-  var documentId = validateDocId(req.params[0], res);
+app.get('/api/*', function(req, res) {
+  var documentId = padDocId(req.params[0], res);
   commentsResponse(0, documentId, res);
 });
 
-app.post('/comments/*', function(req, res) {
-  var documentId = validateDocId(req.params[0], res);
+app.post('/api/*', function(req, res) {
+  var documentId = padDocId(req.params[0], res);
   validateCaptcha(req.body['g-recaptcha-response'], function(err) {
     if(!err) {
       delete req.body['g-recaptcha-response'];
@@ -113,7 +113,8 @@ function postComment (documentId, post, callback) {
   if(!post.body || post.body.trim() == "") {
     callback(errorWithMessage("post body is required"));
   } else {
-    dbRaw.put(documentId+'\x00'+post.date, post, function (err) {
+    var datePartOfId = addLeftZerosUntil(post.date, 15);
+    dbRaw.put(documentId+'\x00'+datePartOfId, post, function (err) {
       callback(err);
     });
   }
@@ -178,12 +179,19 @@ function validateCaptcha(captchaResponse, callback) {
   });
 }
 
-function validateDocId (input, res) {
+function padDocId (input, res) {
   if(input == null || input.length > 10 || !input.match(/[a-z0-9]*/i)) {
     return null;
   } else {
-    return input;
+    return addLeftZerosUntil(input, 10);
   }
+}
+
+function addLeftZerosUntil(str, length) {
+    str = String(str);
+    while (str.length < length)
+        str = "0" + str;
+    return str;
 }
 
 function errorWithMessage(message) {
@@ -196,5 +204,5 @@ var server = app.listen(publishAtPort, function () {
   var host = server.address().address;
   var port = server.address().port;
 
-  console.log('Example app listening at http://%s:%s', host, port);
+  console.log('Comments Api live at http://%s:%s', host, port);
 });

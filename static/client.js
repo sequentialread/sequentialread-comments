@@ -57,7 +57,7 @@
 
 
   function get (url, callback) {
-    xhr("GET", url, undefined, callback);
+    xhr("GET", url+'?t='+Date.now(), undefined, callback);
   }
 
   function post (url, body, callback) {
