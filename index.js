@@ -37,12 +37,14 @@ var dbRaw = levelup('data/comments.db', { valueEncoding: 'json' });
 var publishAtPort = process.env.PORT || 2369;
 
 app.use(function (req, res, next) {
-  var referer = url.parse(req.headers.referer);
-  var origin = referer.protocol+(referer.slashes ? '//' : '')+referer.host;
-  if(settings.origins.some(x => x === origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', ['POST', 'GET', 'OPTIONS']);
-    res.setHeader('Access-Control-Allow-Headers', ['Content-Type']);
+  if(req.headers.referer) {
+    var referer = url.parse(req.headers.referer);
+    var origin = referer.protocol+(referer.slashes ? '//' : '')+referer.host;
+    if(settings.origins.some(x => x === origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', ['POST', 'GET', 'OPTIONS']);
+      res.setHeader('Access-Control-Allow-Headers', ['Content-Type']);
+    }
   }
   next();
 });
