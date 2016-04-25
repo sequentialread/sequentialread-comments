@@ -8,6 +8,8 @@ module.exports = {
     "http://localhost:2368",
     "https://localhost:2368",
     "http://sequentialread.com",
-    "https://sequentialread.com"
+    "https://sequentialread.com",
+    "http://blog.sequentialread.com",
+    "https://blog.sequentialread.com"
   ]
 };
