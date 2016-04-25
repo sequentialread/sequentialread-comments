@@ -10,7 +10,7 @@
     Name: <input name="username"></input>
   </label>
   <label>
-    Email: <input name="email"></input> (optional, not stored, used for Gravatar)
+    Email: <input name="email"></input> <span class="help-text">(optional, not stored, used for Gravatar)</span>
   </label>
   <textarea name="body" rows="5">
   </textarea>
@@ -27,11 +27,13 @@
 
 {{#each errors}}
   {{#if message}}
-    Error: {{message}}
+    <div class="alert alert-danger"> Error: {{message}} </div>
   {{/if}}
 {{/each}}
 
+
 {{#if comments.length}}
+<div class="comments">
   {{#each comments}}
     <div class="sqr-comment">
       {{#if gravatarURL}}
@@ -45,12 +47,11 @@
           <span class="sqr-userid">{{userId}}</span>
           <span class="sqr-date">{{date}}</span>
         </div>
-        <p>
           {{&body}}
-        </p>
       </div>
     </div>
   {{/each}}
+</div>
 {{else}}
 <div>
   There are no comments on this post yet. Your comment could be the first!
