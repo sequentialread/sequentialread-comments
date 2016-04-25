@@ -10,10 +10,13 @@
     Name: <input name="username"></input>
   </label>
   <label>
-    Email: <input name="email"></input> (optional, not shown, used for Gravatar)
+    Email: <input name="email"></input> (optional, not stored, used for Gravatar)
   </label>
   <textarea name="body" rows="5">
   </textarea>
+  <p>
+    Markdown is supported.
+  </p>
   <div class="sqr-submit-area">
     <div class="g-recaptcha"
      data-sitekey="{{recaptchaSiteKey}}"
@@ -31,14 +34,25 @@
 {{#if comments.length}}
   {{#each comments}}
     <div class="sqr-comment">
-      <img class="sqr-gravatar" src="{{gravatarUrl}}"></img>
-      <span class="sqr-username">{{username}}</span><span class="sqr-date">{{date}}</span>
-      <span class="sqr-userid">{{userId}}</span>
-      <p>
-        {{body}}
-      </p>
+      {{#if gravatarURL}}
+      <img class="sqr-gravatar" src="{{gravatarURL}}?d=retro"></img>
+      {{else}}
+      <div class="sqr-gravatar">&nbsp;</div>
+      {{/if}}
+      <div class="post-col">
+        <div>
+          <span class="sqr-username">{{username}}</span>
+          <span class="sqr-userid">{{userId}}</span>
+          <span class="sqr-date">{{date}}</span>
+        </div>
+        <p>
+          {{&body}}
+        </p>
+      </div>
     </div>
   {{/each}}
 {{else}}
+<div>
   There are no comments on this post yet. Your comment could be the first!
+</div>
 {{/if}}

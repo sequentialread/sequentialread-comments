@@ -10,6 +10,18 @@ var querystring = require('querystring');
 var Handlebars = require('handlebars');
 var _ = require('lodash');
 var md5 = require('md5');
+var marked = require('marked');
+marked.setOptions({
+  renderer: new marked.Renderer(),
+  gfm: true,
+  tables: true,
+  breaks: false,
+  pedantic: false,
+  sanitize: true,
+  smartLists: true,
+  smartypants: false
+});
+
 
 var settings = require('./settings');
 
@@ -20,7 +32,7 @@ var template = function(data) {
 
 var app = express();
 app.use( bodyParser.json() );
-var dbRaw = levelup('data/comments7.db', { valueEncoding: 'json' });
+var dbRaw = levelup('data/comments.db', { valueEncoding: 'json' });
 
 var publishAtPort = process.env.PORT || 2369;
 
@@ -59,36 +71,52 @@ app.post('/comments/*', function(req, res) {
 
 function commentsResponse(error, documentId, res) {
   getComments(documentId, function(getCommentsError, comments) {
-    console.log({comments: comments, errors: [error, getCommentsError]});
     res.send(template({
-      comments: comments.map(x => x.value),
+      comments: comments.map(keyValue => {
+        var comment = _.clone(keyValue.value);
+        console.log(comment.body);
+        comment.body = marked(comment.body);
+        console.log(comment.body);
+        return comment;
+      }),
       errors: [error, getCommentsError]
     }));
   });
 }
 
-function postComment (documentId, body, callback) {
+function postComment (documentId, post, callback) {
   if(!documentId) {
     callback(errorWithMessage("invalid documentId"));
     return;
   }
 
-  var hash = md5(body.email.toLowerCase().trim());
-  console.log(hash);
+  var email = post.email ? post.email.toLowerCase().trim() : null;
 
-  body.userId = hash.substring(5,5);
+  if(email && email != '') {
+    var hash = md5(email);
+    post.userId = hash.substring(5,10);
+    post.gravatarURL = post.email && post.email != '' ?
+        'http://www.gravatar.com/avatar/' + hash
+        : null;
+  } else {
+    post.userId = '';
+  }
 
-  body.gravatarURL = body.email && body.email != '' ?
-      'http://www.gravatar.com/avatar/' + hash
-      : null;
+  post.date = Date.now();
 
-  body.date = Date.now();
+  if(!post.username || post.username.trim() == "") {
+    post.username = "Unknown";
+  }
 
-  delete body.email;
+  delete post.email;
 
-  dbRaw.put(documentId+'\x00'+uuid(), body, function (err) {
-    callback(err);
-  });
+  if(!post.body || post.body.trim() == "") {
+    callback(errorWithMessage("post body is required"));
+  } else {
+    dbRaw.put(documentId+'\x00'+post.date, post, function (err) {
+      callback(err);
+    });
+  }
 }
 
 function getComments (documentId, callback) {
@@ -118,8 +146,6 @@ function validateCaptcha(captchaResponse, callback) {
       'response': captchaResponse
       //'remoteip': request.connection.remoteAddress
   });
-
-  console.log(postdata);
 
   var options = {
     hostname: settings.recaptchaHost,

@@ -1,5 +1,5 @@
 
-(function(){
+(function(window, undefined){
   var commentContainer = document.getElementById('sqr-comment-container');
   var commentURL = commentContainer.getAttribute('data-comments-url');
   var commentForm;
@@ -28,17 +28,33 @@
       postComment();
     };
 
-    var dates = commentContainer.querySelectorAll('.sqr-date');
-    Array.prototype.slice.call(dates).forEach(function(x){
+    var replyButton = commentContainer.querySelector('.btn.reply');
+    replyButton.onclick = function() {
+      commentForm.style.display = 'block';
+      replyButton.style.display = 'none';
+    };
+
+    var datesSelection = commentContainer.querySelectorAll('.sqr-date');
+    Array.prototype.slice.call(datesSelection).forEach(function(x){
       x.innerHTML = new Date(Number(x.innerHTML)).toDateString();
     });
+
+    var captchaElement = commentContainer.querySelector('.g-recaptcha');
+    var params = {
+      sitekey: captchaElement.getAttribute('data-sitekey'),
+      callback: window.recaptchaCompleted
+    };
+    window.grecaptcha.render(captchaElement, params);
   }
 
   window.recaptchaCompleted = function() {
     submitButton.disabled = false;
   }
 
-  get(commentURL, loadHTML);
+  window.grecaptchaReady = function() {
+    get(commentURL, loadHTML);
+  }
+
 
   function get (url, callback) {
     xhr("GET", url, undefined, callback);
@@ -61,4 +77,4 @@
     request.send(body);
   }
 
-})();
+})(window);
