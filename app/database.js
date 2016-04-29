@@ -13,7 +13,9 @@ var dbRaw = levelup('./data/comments.db', { valueEncoding: 'json' });
 
 module.exports = {
   saveComment: saveComment,
-  getComments: getComments
+  deleteComment: deleteComment,
+  getAllComments: getAllComments,
+  getCommentsForDocument: getCommentsForDocument
 };
 
 function saveComment (documentId, comment, callback) {
@@ -29,19 +31,36 @@ function saveComment (documentId, comment, callback) {
   });
 }
 
-function getComments (documentId, callback) {
+function deleteComment (documentId, commentId, callback) {
+  dbRaw.delete(documentId+'\x00'+commentId, comment, function (err) {
+    callback(err);
+  });
+}
+
+function getAllComments (callback) {
+  readComments({
+    values    : true
+  }, callback);
+}
+
+function getCommentsForDocument (documentId, callback) {
   documentId = padDocumentId(documentId);
   if(!documentId) {
     callback(new Error("invalid documentId"));
     return;
   }
-  var buffer = [];
-  dbRaw.createReadStream({
+  readComments({
     start     : documentId,
     end       : documentId+'\xff',
     values    : true
-  }).on('error', function (err) {
-    console.error('getComments error ' + err.message);
+  }, callback);
+}
+
+function readComments(options, callback) {
+  var buffer = [];
+  dbRaw.createReadStream(options)
+  .on('error', function (err) {
+    console.error('getCommentsForDocument error ' + err.message);
     callback(err);
   }).on('data', function(data) {
     buffer.push(data);

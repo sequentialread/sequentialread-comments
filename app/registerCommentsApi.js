@@ -55,7 +55,7 @@ module.exports = function (app) {
 
 
 function commentsResponse(error, documentId, res) {
-  database.getComments(documentId, function(getCommentsError, comments) {
+  database.getCommentsForDocument(documentId, function(getCommentsForDocumentError, comments) {
     res.send(template({
       comments: comments.map(keyValue => {
         var comment = _.clone(keyValue.value);
@@ -67,7 +67,7 @@ function commentsResponse(error, documentId, res) {
 
         return comment;
       }),
-      errors: [error, getCommentsError]
+      errors: [error, getCommentsForDocumentError]
     }));
   });
 }
