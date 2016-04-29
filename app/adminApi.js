@@ -30,7 +30,7 @@ module.exports = function (app) {
   });
 
   app.post('/admin/comments', function(req, res) {
-    var message = getAuthenticatedMessage(req.body);
+    var message = getAuthenticatedMessage(req);
     if(message) {
       commentsResponse(res);
     } else {
@@ -39,7 +39,7 @@ module.exports = function (app) {
   });
 
   app.post('/admin/delete', function(req, res) {
-    var message = getAuthenticatedMessage(req.body);
+    var message = getAuthenticatedMessage(req);
     if(message) {
       database.deleteComment(
         message.delete.documentId,
@@ -54,20 +54,16 @@ module.exports = function (app) {
   });
 };
 
-function getAuthenticatedMessage(container) {
-
-  if(!container.hmacSha256 || !container.message) {
+function getAuthenticatedMessage(req) {
+  if(!req.body || !req.headers.authorization) {
     return authResult.missing;
   }
 
-  // Verify that the nonces match and reset the nonce
-  if(container.message.nonce != nonce) {
-    return authResult.incorrect;
-  }
+  var check = hmacSha256(JSON.stringify(req.body)+nonce, settings.adminPassword);
+
   nonce = uuid.v4();
 
-  var check = hmacSha256(JSON.stringify(container.message), settings.adminPassword);
-  return check == container.hmacSha256 ? container.message : authResult.incorrect;
+  return check == req.headers.authorization ? req.body : authResult.incorrect;
 }
 
 function commentsResponse(res) {

@@ -57,22 +57,26 @@
   }
 
   function postWithHmac (endpoint, body, callback) {
-    var signedBody = {
-      message: body
-    };
-    if(adminPassword && adminPassword != '') {
-      body.nonce = container.querySelector('input[type="hidden"]').value;
-      signedBody.hmacSha256 = window.hmacSha256(JSON.stringify(body), adminPassword);
+    var authHeader = null;
+    if(adminPassword) {
+      var nonce = container.querySelector('input[type="hidden"]').value;
+      var message = JSON.stringify(body)+(nonce || "");
+      console.log(message);
+      authHeader = window.hmacSha256(message, (adminPassword || ""));
     }
-    xhr("POST", window.location.href+endpoint, signedBody, callback);
+
+    xhr("POST", window.location.href+endpoint, body, authHeader, callback);
   }
 
-  function xhr(method, url, body, callback) {
+  function xhr(method, url, body, authHeader, callback) {
     var request = new XMLHttpRequest();
     request.addEventListener("load", function() {
       callback(this.responseText);
     });
     request.open(method, url);
+    if(authHeader) {
+      request.setRequestHeader("Authorization", authHeader);
+    }
     if(body && typeof body === 'object') {
       request.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
       body = JSON.stringify(body);
