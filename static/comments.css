@@ -1,0 +1,77 @@
+
+
+.sqr-reply {
+	float:right;
+}
+
+.sqr-comment-form {
+	display: none;
+	label {
+		font-weight: normal;
+	}
+}
+.sqr-comment-form	textarea {
+	width:100%;
+	margin-bottom:7px;
+}
+
+@media screen and (min-width: 405px) {
+	.sqr-comment-form	.sqr-submit-area button {
+		float: right;
+		margin-top: 40px;
+	}
+}
+
+@media screen and (max-width: 575px) {
+	.sqr-comment-form	label span.sqr-help-text {
+		display: block;
+	}
+}
+.sqr-comment-form	label span.sqr-help-text {
+	font-weight: normal;
+}
+
+.sqr-submit-area button {
+  margin-top: 10px;
+}
+
+.sqr-comment-form	.g-recaptcha {
+	display: inline-block;
+}
+
+.sqr-comment {
+	margin-bottom: 10px;
+	border-bottom: 1px solid #dddddd;
+}
+.sqr-comment:first-child {
+	padding-top: 10px;
+	border-top: 1px solid #dddddd;
+}
+
+.sqr-gravatar {
+	background: #dddddd;
+  width: 46px;
+  height: 46px;
+  border-radius: 5px;
+	float: left;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.sqr-comment p {
+	margin-top:5px;
+}
+
+.sqr-userid {
+  color: #aaaaaa;
+}
+
+.sqr-username {
+  font-weight: bold;
+}
+
+.sqr-date {
+	float: right;
+	font-size: 0.8em;
+  color: #aaaaaa;
+}

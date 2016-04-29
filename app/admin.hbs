@@ -1,0 +1,12 @@
+{{#if authenticated}}
+	{{> commentList}}	
+{{else}}
+	<p>Please enter your Admin Password:</p>
+	{{#if incorrect}}
+		<div class="alert alert-warning">Incorrect Password.</div>
+	{{/if}}
+	<form class="login">
+		<input type="password"/>
+		<input type="submit" class="btn btn-highlight"/>
+	</form>
+{{/if}}

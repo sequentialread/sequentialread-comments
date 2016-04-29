@@ -14,5 +14,6 @@
   "emailPort": 465,
   "emailUsername": "$GMAIL_USER",
   "emailPassword": "$GMAIL_PASSWORD",
-  "emailNotificationTarget": "$EMAIL_NOTIFICATION_TARGET"
+  "emailNotificationTarget": "$EMAIL_NOTIFICATION_TARGET",
+  "adminPassword": "$COMMENTS_ADMIN_PASSWORD"
 }

@@ -1,0 +1,23 @@
+
+@import url(https://fonts.googleapis.com/css?family=Open+Sans:400,700,400italic,700italic);
+
+.sqr-reply,
+.sqr-comment-form,
+.sqr-comments {
+	font-family: "Open Sans";
+}
+
+.sqr-btn-delete,
+.sqr-btn-delete:hover,
+.sqr-btn-delete:active {
+  background-color: red;
+  color:white;
+  font-weight: bold;
+  border:none;
+  outline:none;
+  display: inline-block;
+  cursor: pointer;
+  padding-top:4px;
+  padding-bottom: 4px;
+  border-radius: 4px;
+}

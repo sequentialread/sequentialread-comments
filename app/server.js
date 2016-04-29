@@ -4,7 +4,8 @@ var bodyParser = require('body-parser');
 var url = require('url');
 
 var settings = require('./settings');
-var registerCommentsApi = require('./registerCommentsApi');
+var registerAdminApi = require('./adminApi');
+var registerCommentsApi = require('./commentsApi');
 
 var app = express();
 app.use( bodyParser.json() );
@@ -28,6 +29,9 @@ app.use('/static', express.static('static'));
 
 // serve public comments api
 registerCommentsApi(app);
+
+// serve admin page
+registerAdminApi(app);
 
 var server = app.listen(settings.port, function () {
   var host = server.address().address;

@@ -31,8 +31,11 @@ function saveComment (documentId, comment, callback) {
   });
 }
 
-function deleteComment (documentId, commentId, callback) {
-  dbRaw.delete(documentId+'\x00'+commentId, comment, function (err) {
+function deleteComment (documentId, date, callback) {
+  documentId = padDocumentId(documentId);
+  date = addLeftZerosUntil(date, 15);
+  console.log('del: '+documentId+'\x00'+date);
+  dbRaw.del(documentId+'\x00'+date, function (err) {
     callback(err);
   });
 }

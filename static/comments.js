@@ -28,7 +28,7 @@
       postComment();
     };
 
-    var replyButton = commentContainer.querySelector('.btn.reply');
+    var replyButton = commentContainer.querySelector('.btn.sqr-reply');
     replyButton.onclick = function() {
       commentForm.style.display = 'block';
       replyButton.style.display = 'none';

@@ -3,30 +3,19 @@ var _ = require('lodash');
 var fs = require('fs');
 var Handlebars = require('handlebars');
 var md5 = require('md5');
-var marked = require('marked');
 
 var emailNotification = require('./emailNotification');
 var database = require('./database');
 var settings = require('./settings');
 var validateGoogleCaptcha = require('./validateGoogleCaptcha');
+var commentList = require('./commentList');
 
-var templateHandlebars = Handlebars.compile(fs.readFileSync('./app/comments.html', 'utf8'));
+var templateHandlebars = Handlebars.compile(
+  fs.readFileSync('./app/comments.hbs', 'utf8')
+);
 var template = function(data) {
   return templateHandlebars(_.merge(data, settings));
 };
-
-marked.setOptions({
-  renderer: new marked.Renderer(),
-  gfm: true,
-  tables: true,
-  breaks: false,
-  pedantic: false,
-  sanitize: true,
-  smartLists: true,
-  smartypants: false
-});
-
-
 
 module.exports = function (app) {
   app.get('/api/*', function(req, res) {
@@ -37,7 +26,7 @@ module.exports = function (app) {
 
   app.post('/api/*', function(req, res) {
     var documentId = req.params[0];
-    
+
     validateGoogleCaptcha(req.body['g-recaptcha-response'], function(err) {
       if(!err) {
         delete req.body['g-recaptcha-response'];
@@ -55,19 +44,12 @@ module.exports = function (app) {
 
 
 function commentsResponse(error, documentId, res) {
-  database.getComments(documentId, function(getCommentsError, comments) {
+  database.getCommentsForDocument(documentId, function(getCommentsForDocumentError, comments) {
     res.send(template({
-      comments: comments.map(keyValue => {
-        var comment = _.clone(keyValue.value);
-
-        if(!comment.username || comment.username.trim() == "") {
-          comment.username = "Unknown";
-        }
-        comment.body = marked(comment.body);
-
-        return comment;
-      }),
-      errors: [error, getCommentsError]
+      comments: commentList(comments),
+      errors: [error, getCommentsForDocumentError],
+      emptyMessage: "There are no comments on this post yet. "
+          + "Your comment could be the first!"
     }));
   });
 }
@@ -85,6 +67,7 @@ function postComment (documentId, comment, callback) {
   }
   delete comment.email;
 
+  comment.documentId = documentId;
   comment.date = Date.now();
 
   if(!comment.body || comment.body.trim() == "") {
