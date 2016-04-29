@@ -5,7 +5,7 @@ var Handlebars = require('handlebars');
 
 Handlebars.registerPartial(
   'commentList',
-  fs.readFileSync('./app/commentList.hbs', 'utf8')
+  fs.readFileSync('./app/commentList.html', 'utf8')
 );
 
 marked.setOptions({

@@ -11,7 +11,7 @@ var validateGoogleCaptcha = require('./validateGoogleCaptcha');
 var commentList = require('./commentList');
 
 var templateHandlebars = Handlebars.compile(
-  fs.readFileSync('./app/comments.hbs', 'utf8')
+  fs.readFileSync('./app/comments.html', 'utf8')
 );
 var template = function(data) {
   return templateHandlebars(_.merge(data, settings));

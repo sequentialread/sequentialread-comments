@@ -1,6 +1,6 @@
 <h3>Comments</h3>
 
-<button class="btn btn-highlight sqr-reply">
+<button class="sqr-btn sqr-reply">
 <i class=" fa fa-reply"></i>  reply
 </button>
 
@@ -21,13 +21,13 @@
     <div class="g-recaptcha"
      data-sitekey="{{recaptchaSiteKey}}"
      data-callback="recaptchaCompleted" ></div>
-    <button class="btn btn-highlight submit" disabled="true">submit</button>
+    <button class="sqr-btn sqr-submit" disabled="true">submit</button>
   </div>
 </form>
 
 {{#each errors}}
   {{#if message}}
-    <div class="alert alert-warning"> Error: {{message}} </div>
+    <div class="sqr-error"> Error: {{message}} </div>
   {{/if}}
 {{/each}}
 

@@ -39,6 +39,12 @@
 	display: inline-block;
 }
 
+.sqr-comment-form	input {
+	padding: 2px;
+	font-size: 14px;
+	font-weight: normal;
+}
+
 .sqr-comment {
 	margin-bottom: 10px;
 	border-bottom: 1px solid #dddddd;
@@ -74,4 +80,70 @@
 	float: right;
 	font-size: 0.8em;
   color: #aaaaaa;
+}
+
+.sqr-error {
+  color: #ffffff;
+  background-color: #f36d15;
+}
+
+.sqr-error,
+.sqr-btn {
+	border:none;
+	outline:none;
+	padding:8px;
+	font-size: 14px;
+	border-radius: 4px;
+	display: inline-block;
+}
+
+.sqr-btn {
+	cursor: pointer;
+  color: #ffffff;
+  background-color: #9359fa;
+}
+.sqr-btn:focus,
+.sqr-btn.focus {
+  color: #ffffff;
+  background-color: #9359fa;
+  border-color: #9359fa;
+	outline: none;
+}
+.sqr-btn:hover {
+  color: #ffffff;
+  background-color: #9359fa;
+  border-color: #9359fa;
+}
+.sqr-btn:active,
+.sqr-btn.active {
+  color: #ffffff;
+  background-color: #9359fa;
+  border-color: #9359fa;
+
+}
+.sqr-btn:active:hover,
+.sqr-btn.active:hover,
+.sqr-btn:active:focus,
+.sqr-btn.active:focus,
+.sqr-btn:active.focus,
+.sqr-btn.active.focus {
+  color: #ffffff;
+  background-color: #9359fa;
+  border-color: #9359fa;
+	outline: none;
+}
+.sqr-btn:active,
+.sqr-btn.active {
+  background-image: none;
+}
+.sqr-btn.disabled,
+.sqr-btn[disabled],
+.sqr-btn.disabled:hover,
+.sqr-btn[disabled]:hover,
+.sqr-btn.disabled:focus,
+.sqr-btn[disabled]:focus,
+.sqr-btn.disabled.focus,
+.sqr-btn[disabled].focus {
+  background-color: #9990cb;
+  border-color: #9990cb;
 }

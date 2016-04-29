@@ -21,14 +21,14 @@
   function loadHTML(body) {
     commentContainer.innerHTML = body;
     commentForm = commentContainer.querySelector('.sqr-comment-form');
-    submitButton = commentForm.querySelector('.submit');
+    submitButton = commentForm.querySelector('.sqr-submit');
     submitButton.onclick = function() {
       submitButton.disabled = true;
       submitButton.onclick = null;
       postComment();
     };
 
-    var replyButton = commentContainer.querySelector('.btn.sqr-reply');
+    var replyButton = commentContainer.querySelector('.sqr-reply');
     replyButton.onclick = function() {
       commentForm.style.display = 'block';
       replyButton.style.display = 'none';

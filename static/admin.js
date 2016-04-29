@@ -28,7 +28,7 @@
   }
 
   function doLogin() {
-    adminPassword = container.querySelector('input').value;
+    adminPassword = container.querySelector('input[type="password"]').value;
     if(window.sessionStorage) {
       window.sessionStorage[sessionStorageName] = adminPassword;
     }
@@ -61,6 +61,7 @@
       message: body
     };
     if(adminPassword && adminPassword != '') {
+      body.nonce = container.querySelector('input[type="hidden"]').value;
       signedBody.hmacSha256 = window.hmacSha256(JSON.stringify(body), adminPassword);
     }
     xhr("POST", window.location.href+endpoint, signedBody, callback);
