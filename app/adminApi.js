@@ -61,7 +61,6 @@ function getAuthenticatedMessage(container) {
   }
 
   // Verify that the nonces match and reset the nonce
-  console.log(container.message.nonce, nonce);
   if(container.message.nonce != nonce) {
     return authResult.incorrect;
   }
