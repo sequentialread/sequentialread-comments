@@ -2,14 +2,17 @@
 var levelup = require('levelup');
 var fs = require('fs');
 
+var commentsDir = './data/';
+var commentsFileName = 'comments.db';
+
 try {
-  fs.mkdirSync('./data');
+  fs.mkdirSync(commentsDir);
 } catch(ex) {
   if (ex.code != 'EEXIST') {
     throw e;
   }
 }
-var dbRaw = levelup('./data/comments.db', { valueEncoding: 'json' });
+var dbRaw = levelup(commentsDir+commentsFileName, { valueEncoding: 'json' });
 
 module.exports = {
   saveComment: saveComment,

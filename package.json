@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test-node && npm run test-browser",
+    "test-node": "mocha",
+    "test-browser": "node ./node_modules/mocha-phantomjs/bin/mocha-phantomjs ./test/client/index.html"
   },
   "author": "forest johnson",
   "license": "GPL v3",
@@ -19,5 +21,12 @@
     "md5": "^2.1.0",
     "node-uuid": "^1.4.7",
     "nodemailer": "^2.3.2"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "memdown": "^1.1.2",
+    "mocha": "^2.4.5",
+    "mocha-phantomjs": "^4.0.2",
+    "rewire": "^2.5.1"
   }
 }
