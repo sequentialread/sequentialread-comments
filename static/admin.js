@@ -61,7 +61,6 @@
     if(adminPassword) {
       var nonce = container.querySelector('input[type="hidden"]').value;
       var message = JSON.stringify(body)+(nonce || "");
-      console.log(message);
       authHeader = window.hmacSha256(message, (adminPassword || ""));
     }
 
