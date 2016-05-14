@@ -15,6 +15,10 @@ app.use(function (req, res, next) {
   if(req.headers.referer) {
     var referer = url.parse(req.headers.referer);
     var origin = referer.protocol+(referer.slashes ? '//' : '')+referer.host;
+
+    console.log(origin);
+    console.log(settings.origins.join('\n'));
+
     if(settings.origins.some(x => x === origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Methods', ['POST', 'GET', 'OPTIONS']);
