@@ -59,9 +59,7 @@ function postComment (documentId, comment, callback) {
   if(email && email != '') {
     var hash = md5(email);
     comment.userId = hash.substring(5,10);
-    comment.gravatarURL = comment.email && comment.email != '' ?
-        'https://www.gravatar.com/avatar/' + hash
-        : null;
+    comment.gravatarHash = comment.email && comment.email != '' ? hash : null;
   } else {
     comment.userId = '';
   }

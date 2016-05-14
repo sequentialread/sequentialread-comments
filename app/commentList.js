@@ -26,6 +26,11 @@ module.exports = function commentList(commentKeyValues) {
     if(!comment.username || comment.username.trim() == "") {
       comment.username = "Unknown";
     }
+    if(comment.gravatarHash) {
+      comment.gravatarURL =
+        'https://www.gravatar.com/avatar/' + comment.gravatarHash;
+    }
+
     comment.body = marked(comment.body);
 
     return comment;
