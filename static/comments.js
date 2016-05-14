@@ -22,12 +22,13 @@
     commentContainer.innerHTML = body;
     commentForm = commentContainer.querySelector('.sqr-comment-form');
     submitButton = commentForm.querySelector('.sqr-submit');
-    submitButton.onclick = function() {
+    submitButton.onclick = function(event) {
       submitButton.disabled = true;
       submitButton.onclick = null;
       postComment();
 
       // dont leave the page and post the form since we are doing xhrs
+      event.preventDefault();
       return false;
     };
 
