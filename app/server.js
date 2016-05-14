@@ -12,17 +12,19 @@ app.use( bodyParser.json() );
 
 // CORS middleware, allow origins based on settings
 app.use(function (req, res, next) {
-  if(req.headers.referer) {
-    var referer = url.parse(req.headers.referer);
-    var origin = referer.protocol+(referer.slashes ? '//' : '')+referer.host;
-
-    console.log(origin);
-    console.log(settings.origins.join('\n'));
+  if(req.headers.origin) {
+    var originUrl = url.parse(req.headers.origin);
+    var origin = originUrl.protocol+(originUrl.slashes ? '//' : '')+originUrl.host;
 
     if(settings.origins.some(x => x === origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', ['POST', 'GET', 'OPTIONS']);
-      res.setHeader('Access-Control-Allow-Headers', ['Content-Type']);
+
+      if(req.headers['access-control-request-method']) {
+        res.setHeader('Access-Control-Allow-Methods', req.headers['access-control-request-method']);
+      }
+      if(req.headers['access-control-request-headers']) {
+        res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers']);
+      }
     }
   }
   next();
