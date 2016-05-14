@@ -39,4 +39,4 @@ COPY . /usr/src/app
 
 EXPOSE 2369
 
-CMD [ "nodemon", "index" ]
+CMD [ "node", "node_modules/nodemon/bin/nodemon.js", "index" ]
