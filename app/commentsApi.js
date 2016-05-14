@@ -60,7 +60,7 @@ function postComment (documentId, comment, callback) {
     var hash = md5(email);
     comment.userId = hash.substring(5,10);
     comment.gravatarURL = comment.email && comment.email != '' ?
-        'http://www.gravatar.com/avatar/' + hash
+        'https://www.gravatar.com/avatar/' + hash
         : null;
   } else {
     comment.userId = '';
