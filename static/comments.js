@@ -26,6 +26,9 @@
       submitButton.disabled = true;
       submitButton.onclick = null;
       postComment();
+
+      // dont leave the page and post the form since we are doing xhrs
+      return false;
     };
 
     var replyButton = commentContainer.querySelector('.sqr-reply');
