@@ -46,7 +46,7 @@ module.exports = function (app) {
 function commentsResponse(error, documentId, res) {
   database.getCommentsForDocument(documentId, function(getCommentsForDocumentError, comments) {
     res.send(template({
-      comments: commentList(comments),
+      comments: commentList(comments || []),
       errors: [error, getCommentsForDocumentError],
       emptyMessage: "There are no comments on this post yet. "
           + "Your comment could be the first!"
