@@ -2,7 +2,7 @@
 
 var fs = require('fs');
 var Handlebars = require('handlebars');
-var uuid = require('node-uuid');
+var uuid = require('uuid');
 
 var database = require('./database');
 var settings = require('./settings');

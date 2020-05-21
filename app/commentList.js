@@ -1,4 +1,7 @@
 var marked = require('marked');
+var createDOMPurify = require('dompurify');
+var jsdom = require('jsdom');
+
 var fs = require('fs');
 var _ = require('lodash');
 var Handlebars = require('handlebars');
@@ -21,6 +24,7 @@ marked.setOptions({
 
 module.exports = function commentList(commentKeyValues) {
   return commentKeyValues.map(keyValue => {
+    //console.log(keyValue);
     var comment = _.clone(keyValue.value);
 
     if(!comment.username || comment.username.trim() == "") {
@@ -31,7 +35,10 @@ module.exports = function commentList(commentKeyValues) {
         'https://www.gravatar.com/avatar/' + comment.gravatarHash;
     }
 
-    comment.body = marked(comment.body);
+    var window = new jsdom.JSDOM('').window;
+    var DOMPurify = createDOMPurify(window);
+    
+    comment.body = DOMPurify.sanitize(marked(comment.body || ""));
 
     return comment;
   });

@@ -1,5 +1,7 @@
 
 var levelup = require('levelup');
+var leveldown = require('leveldown');
+var encoding = require('encoding-down');
 var fs = require('fs');
 
 var commentsDir = './data/';
@@ -12,7 +14,7 @@ try {
     throw e;
   }
 }
-var dbRaw = levelup(commentsDir+commentsFileName, { valueEncoding: 'json' });
+var dbRaw = levelup(encoding(leveldown(commentsDir+commentsFileName), { valueEncoding: 'json' }));
 
 module.exports = {
   saveComment: saveComment,
