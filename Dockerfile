@@ -1,17 +1,22 @@
-FROM node:14-buster
 
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
+FROM golang:1.15.2-alpine as build
+ARG GOARCH=
+ARG GO_BUILD_ARGS=
 
-# Install app dependencies
-COPY package.json /usr/src/app/
-RUN npm install
+RUN mkdir /build
+WORKDIR /build
+RUN apk add --update --no-cache ca-certificates git \
+  && go get github.com/boltdb/bolt \
+  && go get github.com/gomarkdown/markdown \
+  && go get github.com/SYM01/htmlsanitizer \
+  && go get git.sequentialread.com/forest/pkg-errors
+COPY . .
+RUN  go build -v $GO_BUILD_ARGS -o /build/sequentialread-comments .
 
-RUN npm install leveldown --build-from-source
-
-# Bundle app source
-COPY . /usr/src/app
-
-EXPOSE 2369
-
-CMD [ "bash", "restart-on-crash.sh" ]
+FROM alpine
+WORKDIR /app
+COPY --from=build /build/sequentialread-comments /app/sequentialread-comments
+COPY --from=build /build/comments.html.gotemplate /app/comments.html.gotemplate
+COPY --from=build /build/static /app/static
+RUN chmod +x /app/sequentialread-comments
+ENTRYPOINT ["/app/sequentialread-comments"]

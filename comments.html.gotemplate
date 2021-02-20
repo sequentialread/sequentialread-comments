@@ -1,0 +1,57 @@
+<h3>Comments</h3>
+
+<button class="sqr-btn sqr-reply"> <i class=" fa fa-reply"></i> reply </button>
+
+<form class="sqr-comment-form" method="POST" action="#">
+  <label>
+    Name: <input name="username"></input>
+  </label>
+  <label>
+    Email: <input name="email"></input> <span class="sqr-help-text">(optional, not stored, used for Gravatar)</span>
+  </label>
+  <textarea name="body" rows="5">
+  </textarea>
+  <p>
+    Markdown is supported.
+  </p>
+  <div class="sqr-submit-area">
+    <div class="g-recaptcha"
+     data-sitekey="{{ .RecaptchaSiteKey }}"
+     data-callback="recaptchaCompleted" ></div>
+    <button class="sqr-btn sqr-submit" disabled="true">submit</button>
+  </div>
+</form>
+
+{{ if .Error }}
+    <div class="sqr-error"> Error: {{ .Error }} </div>
+{{ end }}
+
+
+{{ if .Comments }}
+  <div class="sqr-comments">
+  {{ range .Comments }}
+    <div class="sqr-comment">
+      {{ if .GravatarHash }}
+        <img class="sqr-gravatar" src="https://www.gravatar.com/avatar/{{ .GravatarHash }}?d=retro"></img>
+      {{ else }}
+      <div class="sqr-gravatar">&nbsp;</div>
+      {{ end }}
+      <div class="post-col">
+        <div>
+          <span class="sqr-username">{{ .Username }}</span>
+          <span class="sqr-userid">{{ .UserID }}</span>
+          <span class="sqr-documentId" style="display:none;">{{ .DocumentID }}</span>
+          <span class="sqr-date">{{ .Date }}</span>
+        </div>
+        {{ .BodyHTML }}
+      </div>
+    </div>
+  {{ end }}
+  </div>
+{{ else }}
+<div>
+  There are no comments on this post yet. Your comment could be the first!
+</div>
+{{ end }}
+
+
