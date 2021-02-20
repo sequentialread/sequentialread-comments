@@ -3,11 +3,6 @@
   "version": "0.1.1",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "test": "npm run test-node && npm run test-browser",
-    "test-node": "mocha",
-    "test-browser": "node ./node_modules/mocha-phantomjs/bin/mocha-phantomjs ./test/client/index.html"
-  },
   "author": "forest johnson",
   "license": "GPL v3",
   "dependencies": {

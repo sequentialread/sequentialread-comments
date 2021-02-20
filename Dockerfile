@@ -7,7 +7,7 @@ WORKDIR /usr/src/app
 COPY package.json /usr/src/app/
 RUN npm install
 
-RUN npm install leveldown --build-from-source
+RUN npm install leveldown 
 
 # Bundle app source
 COPY . /usr/src/app
@@ -15,3 +15,5 @@ COPY . /usr/src/app
 EXPOSE 2369
 
 CMD [ "bash", "restart-on-crash.sh" ]
+
+
