@@ -1,19 +1,11 @@
-FROM node:14-buster
-
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
-
-# Install app dependencies
-COPY package.json /usr/src/app/
+FROM node:15.9.0-alpine3.13 as build
+RUN mkdir /build
+WORKDIR /build
+COPY package.json .
 RUN npm install
 
-RUN npm install leveldown 
-
-# Bundle app source
-COPY . /usr/src/app
-
-EXPOSE 2369
-
-CMD [ "bash", "restart-on-crash.sh" ]
-
-
+FROM node:15.9.0-alpine3.13
+WORKDIR /app
+COPY --from=build /build/node_modules /app/node_modules
+COPY . /app/
+CMD [ "index.js" ]
