@@ -1,20 +1,19 @@
 package main
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	errors "git.sequentialread.com/forest/pkg-errors"
@@ -25,37 +24,42 @@ import (
 )
 
 type Comment struct {
-	Email                 string        `json:"email"`
-	Username              string        `json:"username"`
-	Body                  string        `json:"body"`
-	BodyHTML              template.HTML `json:"bodyHTML,omitempty"`
-	UserID                string        `json:"userId"`
-	GravatarHash          string        `json:"gravatarHash"`
-	DocumentID            string        `json:"documentId"`
-	Date                  int64         `json:"date"`
-	GoogleCaptchaResponse string        `json:"g-recaptcha-response,omitempty"`
+	Email            string `json:"email"`
+	Username         string `json:"username"`
+	Body             string `json:"body"`
+	BodyHTML         string `json:"bodyHTML,omitempty"`
+	UserID           string `json:"userId"`
+	GravatarHash     string `json:"gravatarHash"`
+	DocumentID       string `json:"documentId"`
+	Date             int64  `json:"date"`
+	CaptchaChallenge string `json:"captchaChallenge,omitempty"`
+	CaptchaNonce     string `json:"captchaNonce,omitempty"`
 }
 
 var origins []string
 var portString = "$COMMENTS_LISTEN_PORT"
-var recaptchaSiteKey = "$COMMENTS_RECAPTCHA_SITE_KEY"
-var recaptchaSecretKey = "$COMMENTS_RECAPTCHA_SECRET_KEY"
+var captchaAPIToken = "$COMMENTS_CAPTCHA_API_TOKEN"
+var captchaAPIURLString = "$COMMENTS_CAPTCHA_URL"
+
+// Note that every difficulty level is 16x more difficult than the last.
+// Recommended difficulty level = 3
+var captchaDifficultyLevelString = "$COMMENTS_CAPTCHA_DIFFICULTY_LEVEL"
+var captchaDifficultyLevel int
+var captchaAPIURL *url.URL
+var loadCaptchaChallengesMutex *sync.Mutex
+var captchaChallengesMutex *sync.Mutex
+var loadCaptchaChallengesMutexIsProbablyLocked = false
 var emailHost = "$COMMENTS_EMAIL_HOST"
 var emailPort = "$COMMENTS_EMAIL_PORT"
 var emailUsername = "$COMMENTS_EMAIL_USER"
 var emailPassword = "$COMMENTS_EMAIL_PASSWORD"
 var emailNotificationTarget = "$COMMENTS_NOTIFICATION_TARGET"
 var adminPassword = "$COMMENTS_ADMIN_PASSWORD"
-var recaptchaHost = "www.google.com"
-var recaptchaPath = "/recaptcha/api/siteverify"
+var captchaChallenges []string
 var db *bolt.DB
 var httpClient *http.Client
 
-var commentsTemplate *template.Template
-
 var markdownRenderer *markdown_to_html.Renderer
-
-//var indexTemplate *template.Template
 
 func main() {
 
@@ -66,8 +70,21 @@ func main() {
 	}
 	originsCSV := os.ExpandEnv("$COMMENTS_CORS_ORIGINS")
 	origins = splitNonEmpty(originsCSV, ",")
-	recaptchaSiteKey = os.ExpandEnv(recaptchaSiteKey)
-	recaptchaSecretKey = os.ExpandEnv(recaptchaSecretKey)
+	captchaAPIToken = os.ExpandEnv(captchaAPIToken)
+	captchaAPIURLString = os.ExpandEnv(captchaAPIURLString)
+	captchaAPIURL, err = url.Parse(captchaAPIURLString)
+	if err != nil {
+		panic(errors.Wrapf(err, "can't parse COMMENTS_CAPTCHA_URL '%s' as url", captchaAPIURLString))
+	}
+
+	captchaDifficultyLevelString = os.ExpandEnv(captchaDifficultyLevelString)
+	captchaDifficultyLevel, err = strconv.Atoi(captchaDifficultyLevelString)
+	if err != nil {
+		panic(errors.Wrapf(err, "can't parse COMMENTS_CAPTCHA_DIFFICULTY_LEVEL '%s' as int", captchaDifficultyLevelString))
+	}
+	loadCaptchaChallengesMutex = &sync.Mutex{}
+	captchaChallengesMutex = &sync.Mutex{}
+
 	emailHost = os.ExpandEnv(emailHost)
 	emailPort = os.ExpandEnv(emailPort)
 	emailUsername = os.ExpandEnv(emailUsername)
@@ -85,11 +102,14 @@ func main() {
 		Timeout: time.Second * time.Duration(20),
 	}
 
+	err = loadCaptchaChallenges()
+	if err != nil {
+		panic(errors.Wrap(err, "could not loadCaptchaChallenges():"))
+	}
+
 	markdownRenderer = markdown_to_html.NewRenderer(markdown_to_html.RendererOptions{
 		Flags: markdown_to_html.CommonFlags | markdown_to_html.HrefTargetBlank,
 	})
-
-	commentsTemplate = loadTemplate("comments.html.gotemplate")
 
 	http.HandleFunc("/api/", comments)
 
@@ -134,9 +154,9 @@ func comments(response http.ResponseWriter, request *http.Request) {
 
 func admin(response http.ResponseWriter, request *http.Request) {
 	addCORSHeaders(response, request)
-	// response.WriteHeader(500)
-	// response.Write([]byte("500 not implemented"))
-	importComments(response, request)
+	response.WriteHeader(500)
+	response.Write([]byte("500 not implemented"))
+	//importComments(response, request)
 }
 
 func addCORSHeaders(response http.ResponseWriter, request *http.Request) {
@@ -170,10 +190,10 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 		log.Printf("bad request: error reading posted comment: %v", err)
 		return "bad request: malformed json"
 	}
-	err = validateGoogleCaptcha(postedComment.GoogleCaptchaResponse)
+	err = validateCaptcha(postedComment.CaptchaChallenge, postedComment.CaptchaNonce)
 	if err != nil {
-		log.Printf("validateGoogleCaptcha failed: %v", err)
-		return "invalid captcha"
+		log.Printf("validateCaptcha failed: %v", err)
+		return "proof of work captcha failed"
 	}
 	if regexp.MustCompile(`^[\s\t\n\r]*$`).MatchString(postedComment.Body) {
 		return "comment body is required"
@@ -191,7 +211,8 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 			return err
 		}
 		postedComment.DocumentID = postID
-		postedComment.GoogleCaptchaResponse = ""
+		postedComment.CaptchaChallenge = ""
+		postedComment.CaptchaNonce = ""
 		postedComment.Date = getMillisecondsSinceUnixEpoch()
 		postedBytes, err := json.Marshal(postedComment)
 		if err != nil {
@@ -225,7 +246,7 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 			if err != nil {
 				return err
 			}
-			comment.BodyHTML = template.HTML(bodyHTML)
+			comment.BodyHTML = bodyHTML
 			comments = append(comments, comment)
 			return nil
 		})
@@ -238,78 +259,134 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 		return
 	}
 
+	// if it looks like we will run out of challenges soon & not currently busy getting them,
+	// then kick off a goroutine to go get them in the background.
+	if len(captchaChallenges) > 0 && len(captchaChallenges) < 5 && !loadCaptchaChallengesMutexIsProbablyLocked {
+		go loadCaptchaChallenges()
+	}
+
+	if captchaChallenges == nil || len(captchaChallenges) == 0 {
+		err = loadCaptchaChallenges()
+		if err != nil {
+			log.Printf("loading captcha challenges failed: %v", err)
+			response.WriteHeader(500)
+			response.Write([]byte("captcha api error"))
+			return
+		}
+	}
+	var challenge string
+	captchaChallengesMutex.Lock()
+	challenge = captchaChallenges[0]
+	captchaChallenges = captchaChallenges[1:]
+	captchaChallengesMutex.Unlock()
+
 	commentsData := struct {
-		RecaptchaSiteKey string
-		Comments         []Comment
-		Error            string
+		CaptchaURL       string    `json:"captchaURL"`
+		CaptchaChallenge string    `json:"captchaChallenge"`
+		Comments         []Comment `json:"comments"`
+		Error            string    `json:"error"`
 	}{
-		RecaptchaSiteKey: recaptchaSiteKey,
+		CaptchaURL:       captchaAPIURL.String(),
+		CaptchaChallenge: challenge,
 		Comments:         comments,
 		Error:            couldNotPostReason,
 	}
 
-	var buffer bytes.Buffer
-	err = commentsTemplate.Execute(&buffer, commentsData)
-
+	responseBytes, err := json.Marshal(commentsData)
 	if err != nil {
-		log.Printf("error templating comments: %v", err)
+		log.Printf("json marshal error: %v", err)
 		response.WriteHeader(500)
-		response.Write([]byte("500 internal server error"))
+		response.Write([]byte("json marshal error"))
 		return
 	}
 
-	io.Copy(response, &buffer)
+	response.Header().Set("Content-Type", "application/json")
+	response.WriteHeader(200)
+	response.Write(responseBytes)
 }
 
-func validateGoogleCaptcha(captchaResponse string) error {
+func loadCaptchaChallenges() error {
+	// make sure we only call this function once at a time.
+	loadCaptchaChallengesMutex.Lock()
+	loadCaptchaChallengesMutexIsProbablyLocked = true
+	defer (func() {
+		loadCaptchaChallengesMutexIsProbablyLocked = false
+		loadCaptchaChallengesMutex.Unlock()
+	})()
+
 	query := url.Values{}
-	query.Add("secret", recaptchaSecretKey)
-	query.Add("response", captchaResponse)
+	query.Add("difficultyLevel", strconv.Itoa(captchaDifficultyLevel))
 
-	recaptchaRequest, err := http.NewRequest(
-		"POST",
-		"https://www.google.com/recaptcha/api/siteverify",
-		bytes.NewBuffer([]byte(query.Encode())),
-	)
+	loadURL := url.URL{
+		Scheme:   captchaAPIURL.Scheme,
+		Host:     captchaAPIURL.Host,
+		Path:     filepath.Join(captchaAPIURL.Path, "GetChallenges"),
+		RawQuery: query.Encode(),
+	}
+
+	captchaRequest, err := http.NewRequest("POST", loadURL.String(), nil)
 	if err != nil {
 		return err
 	}
-	recaptchaRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	captchaRequest.Header.Set("Authorization", fmt.Sprintf("Bearer %s", captchaAPIToken))
 
-	response, err := httpClient.Do(recaptchaRequest)
-	if err != nil {
-		return err
-	}
-
-	responseBody, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
-
-	googleResponse := struct {
-		Success bool `json:"success"`
-	}{}
-	err = json.Unmarshal(responseBody, &googleResponse)
+	response, err := httpClient.Do(captchaRequest)
 	if err != nil {
 		return err
 	}
 
-	if !googleResponse.Success {
-		return errors.New("captcha validation failed")
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
 	}
+
+	if response.StatusCode != 200 {
+		return fmt.Errorf(
+			"load proof of work captcha challenges api returned http %d: %s",
+			response.StatusCode, string(responseBytes),
+		)
+	}
+
+	err = json.Unmarshal(responseBytes, &captchaChallenges)
+	if err != nil {
+		return err
+	}
+
+	if len(captchaChallenges) == 0 {
+		return errors.New("proof of work captcha challenges api returned empty array")
+	}
+
 	return nil
 }
 
-func loadTemplate(filename string) *template.Template {
-	newTemplateString, err := ioutil.ReadFile(filename)
-	if err != nil {
-		panic(err)
+func validateCaptcha(challenge, nonce string) error {
+	query := url.Values{}
+	query.Add("challenge", challenge)
+	query.Add("nonce", nonce)
+	query.Add("token", captchaAPIToken)
+
+	verifyURL := url.URL{
+		Scheme:   captchaAPIURL.Scheme,
+		Host:     captchaAPIURL.Host,
+		Path:     filepath.Join(captchaAPIURL.Path, "Verify"),
+		RawQuery: query.Encode(),
 	}
-	newTemplate, err := template.New(filename).Parse(string(newTemplateString))
+
+	captchaRequest, err := http.NewRequest("POST", verifyURL.String(), nil)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return newTemplate
+	captchaRequest.Header.Set("Authorization", fmt.Sprintf("Bearer %s", captchaAPIToken))
+
+	response, err := httpClient.Do(captchaRequest)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode != 200 {
+		return errors.New("proof of work captcha validation failed")
+	}
+	return nil
 }
 
 func splitNonEmpty(input, sep string) []string {
@@ -327,38 +404,38 @@ func getMillisecondsSinceUnixEpoch() int64 {
 	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-func importComments(response http.ResponseWriter, request *http.Request) {
+// func importComments(response http.ResponseWriter, request *http.Request) {
 
-	bodyBytes, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		response.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
-	var comments []Comment
-	err = json.Unmarshal(bodyBytes, &comments)
-	if err != nil {
-		response.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
+// 	bodyBytes, err := ioutil.ReadAll(request.Body)
+// 	if err != nil {
+// 		response.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
+// 	var comments []Comment
+// 	err = json.Unmarshal(bodyBytes, &comments)
+// 	if err != nil {
+// 		response.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
 
-	for _, comment := range comments {
-		err = db.Update(func(tx *bolt.Tx) error {
-			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", comment.DocumentID)))
-			if err != nil {
-				return err
-			}
-			postedBytes, err := json.Marshal(comment)
-			if err != nil {
-				return err
-			}
-			err = bucket.Put([]byte(fmt.Sprintf("%015d", comment.Date)), postedBytes)
-			return err
-		})
-		if err != nil {
-			response.Write([]byte(fmt.Sprintf("%v", err)))
-			return
-		}
-	}
+// 	for _, comment := range comments {
+// 		err = db.Update(func(tx *bolt.Tx) error {
+// 			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", comment.DocumentID)))
+// 			if err != nil {
+// 				return err
+// 			}
+// 			postedBytes, err := json.Marshal(comment)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			err = bucket.Put([]byte(fmt.Sprintf("%015d", comment.Date)), postedBytes)
+// 			return err
+// 		})
+// 		if err != nil {
+// 			response.Write([]byte(fmt.Sprintf("%v", err)))
+// 			return
+// 		}
+// 	}
 
-	response.Write([]byte("ok"))
-}
+// 	response.Write([]byte("ok"))
+// }

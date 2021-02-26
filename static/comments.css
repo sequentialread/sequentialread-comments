@@ -1,26 +1,21 @@
 
 
+.sqr-comments {
+	margin-top: 6rem;
+}
+
 .sqr-reply {
 	float:right;
 }
 
 .sqr-comment-form {
 	display: none;
-	label {
-		font-weight: normal;
-	}
 }
-.sqr-comment-form	textarea {
-	width:100%;
-	margin-bottom:7px;
+.sqr-comment-form label {
+  font-weight: normal;
 }
 
-@media screen and (min-width: 405px) {
-	.sqr-comment-form	.sqr-submit-area button {
-		float: right;
-		margin-top: 40px;
-	}
-}
+
 
 @media screen and (max-width: 575px) {
 	.sqr-comment-form	label span.sqr-help-text {
@@ -31,8 +26,11 @@
 	font-weight: normal;
 }
 
+.sqr-submit-area {
+}
+
 .sqr-submit-area button {
-  margin-top: 10px;
+  float: right;
 }
 
 .sqr-comment-form	.g-recaptcha {
@@ -42,8 +40,35 @@
 .sqr-comment-form	input {
 	padding: 2px;
 	font-size: 14px;
-	font-weight: normal;
+  font-weight: normal;
+  margin: 1px;
+  border: 1px solid lightgray;
+  outline: 0;
+  box-sizing: border-box;
+  border-radius: 0.3rem;
 }
+
+.sqr-comment-form	input:focus {
+  margin: 0;
+  border: 2px solid #29f;
+}
+
+.sqr-comment-form	textarea {
+	width:100%;
+  margin: 1px;
+  margin-bottom:7px;
+  border: 1px solid lightgray;
+  outline: 0;
+  box-sizing: border-box;
+  border-radius: 0.3rem;
+}
+
+.sqr-comment-form	textarea:focus {
+  margin: 0;
+	border: 2px solid #29f;
+  margin-bottom:6px;
+}
+
 
 .sqr-comment {
 	margin-bottom: 10px;
@@ -69,6 +94,7 @@
 }
 
 .sqr-userid {
+  margin-left: 0.6rem;
   color: #aaaaaa;
 }
 

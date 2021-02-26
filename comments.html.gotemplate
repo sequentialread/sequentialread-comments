@@ -15,9 +15,14 @@
     Markdown is supported.
   </p>
   <div class="sqr-submit-area">
-    <div class="g-recaptcha"
-     data-sitekey="{{ .RecaptchaSiteKey }}"
-     data-callback="recaptchaCompleted" ></div>
+    <div
+      class="sqr-captcha"
+      data-sqr-captcha-url="{{ .CaptchaURL }}"
+      data-sqr-captcha-challenge="{{ .CaptchaChallengeBase64 }}"
+      data-sqr-captcha-callback="captchaCompleted">
+    </div>
+    <script src="{{ .CaptchaURL }}/static/captcha.js"></script>
+
     <button class="sqr-btn sqr-submit" disabled="true">submit</button>
   </div>
 </form>
