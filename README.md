@@ -56,37 +56,7 @@ Lightweight and easy-to-use blog comments system, low friction, easy to self-hos
 
 Notification emails are sent with both plain text and HTML for best compatibility an readability:
 
-```
-forest, 
- 
-Anonymous Andy posted a reply on the article 
-
-'Sequential Read - The "Pragmatic Path" 4-Year Update: Introducing 
-Greenhouse!' 
-
-at:
-https://beta.sequentialread.com/the-pragmatic-path-4-year-update-introducing-greenhouse/ 
-
-
-This is an **example** comment. Cheers! 
- 
---------------------------------------------------------------------- 
- 
-To disable notifications for future comments on this article, please  
-visit the following link in your web browser: 
- 
-https://comments.beta.sequentialread.com/disable/EXAMPLE1 
- 
-If you believe you have recieved this message in error, or to  
-completely unsubscribe from all email from this service, please visit  
-the following link in your web browser: 
- 
-https://comments.beta.sequentialread.com/unsubscribe/EXAMPLE2 
- 
- 
-Powered by SequentialRead Comments:
-https://git.sequentialread.com/forest/sequentialread-comments 
-```
+![rich text email](readme/plain_text.png)
 
 And here is the HTML rich text email:
 
