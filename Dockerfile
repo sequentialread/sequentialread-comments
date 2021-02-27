@@ -9,14 +9,16 @@ RUN apk add --update --no-cache ca-certificates git \
   && go get github.com/boltdb/bolt \
   && go get github.com/gomarkdown/markdown \
   && go get github.com/SYM01/htmlsanitizer \
+  && go get github.com/GeorgeMac/idicon/icon \ 
+  && go get github.com/GeorgeMac/idicon/colour \
   && go get git.sequentialread.com/forest/pkg-errors
-COPY . .
+COPY main.go /build/main.go
 RUN  go build -v $GO_BUILD_ARGS -o /build/sequentialread-comments .
 
 FROM alpine
 WORKDIR /app
 COPY --from=build /build/sequentialread-comments /app/sequentialread-comments
-COPY --from=build /build/comments.html.gotemplate /app/comments.html.gotemplate
-COPY --from=build /build/static /app/static
+#COPY comments.html.gotemplate /app/comments.html.gotemplate
+COPY static /app/static
 RUN chmod +x /app/sequentialread-comments
 ENTRYPOINT ["/app/sequentialread-comments"]

@@ -8,22 +8,34 @@
 	float:right;
 }
 
-.sqr-comment-form {
-	display: none;
-}
 .sqr-comment-form label {
   font-weight: normal;
 }
 
-
-
-@media screen and (max-width: 575px) {
-	.sqr-comment-form	label span.sqr-help-text {
-		display: block;
-	}
+.sqr-comment-bottom-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  font-size: 0.9em;
+  margin-bottom: 0.1em;
 }
-.sqr-comment-form	label span.sqr-help-text {
-	font-weight: normal;
+
+.sqr-comment-bottom-row a,
+.sqr-comment-bottom-row a:hover,
+.sqr-comment-bottom-row a:visited,
+.sqr-comment-bottom-row a:active,
+.sqr-comment-bottom-row span {
+  color: #9359fa;
+  text-decoration: none;
+  cursor: pointer;
+  margin-right: 1em;
+  margin-left: 1em;
+}
+
+.sqr-reply-to-comment-form {
+  margin-top: 2em;
+  margin-bottom: 4em;
+  display: none;
 }
 
 .sqr-submit-area {
@@ -33,11 +45,8 @@
   float: right;
 }
 
-.sqr-comment-form	.g-recaptcha {
-	display: inline-block;
-}
 
-.sqr-comment-form	input {
+.sqr-comment-form	input[type='text'] {
 	padding: 2px;
 	font-size: 14px;
   font-weight: normal;
@@ -48,7 +57,7 @@
   border-radius: 0.3rem;
 }
 
-.sqr-comment-form	input:focus {
+.sqr-comment-form	input[type='text']:focus {
   margin: 0;
   border: 2px solid #29f;
 }
@@ -69,11 +78,53 @@
   margin-bottom:6px;
 }
 
+.sqr-radio-row {
+  display: flex;
+  line-height: 0.8em;
+  align-items: center;
+}
+
+.sqr-radio-row label{
+  margin-left: 1em;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.sqr-selected-radio {
+  background-color: #f6ff72;
+}
+
+.sqr-radio-row label span {
+  padding-top: 4px;
+  padding-left: 0.3em;
+}
+
+.sqr-radio-row input[type="radio"] {
+  margin-top: 0;
+}
+.sqr-radio-row input[type="radio"]:focus {
+  outline: 0;
+}
+
 
 .sqr-comment {
-	margin-bottom: 10px;
-	border-bottom: 1px solid #dddddd;
 }
+
+.sqr-comment-highlighted {
+
+}
+
+.sqr-post-column {
+  border-bottom: 1px solid #dddddd;
+  margin-bottom: 1.6em;
+}
+
+.sqr-post-column.sqr-highlighted {
+  background-color: #f8feac;
+}
+
 .sqr-comment:first-child {
 	padding-top: 10px;
 	border-top: 1px solid #dddddd;
@@ -93,7 +144,14 @@
 	margin-top:5px;
 }
 
-.sqr-userid {
+.sqr-in-reply-to {
+  padding-left: 1em;
+  padding-right: 1em;
+  color: #aaaaaa;
+  font-size: 0.9em;
+}
+
+.sqr-avatar-hash {
   margin-left: 0.6rem;
   color: #aaaaaa;
 }
