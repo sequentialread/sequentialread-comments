@@ -23,6 +23,7 @@ Lightweight and easy-to-use blog comments system, low friction, easy to self-hos
 #### Respects Users 
 
   - [Gravatar](https://gravatar.com/) is supported, commenter decides whether to use it or not. Off by default.
+    - When Gravatar is turned on, the avatar is fetched only once by the server and cached in the DB.
   - Commenter chooses whether or not receive email notifications on subsequent replies
     -  If they choose not to recieve notifications, [their email address will not be stored](https://git.sequentialread.com/forest/sequentialread-comments/src/b0bd22106210dcd71c47dc48959939276ece7d3d/main.go#L306)
   - All email notifications come with two opt-out links, one for the document in question, and one for the entire app
