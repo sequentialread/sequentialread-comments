@@ -192,6 +192,7 @@ The password for the `admin` user on the web-based admin panel. If it is not pro
 
 ----
 
+
 # HTML DOM API
 
 #### `id="sqr-comment-container"`
@@ -234,9 +235,11 @@ If you wish to use the path part of the URL as the `DocumentID`, you will have t
 <script src="https://comments.mysite.com/static/comments.js"></script>
 ```
 
-So for example, for the page `https://mysite.com/myProduct/blog/check-out-our-new-blog-commetns-system?q=about#about-us`.
+So for example, for the page `https://mysite.com/myProduct/blog/check-out-our-new-blog-commetns-system?q=about#about-us`
 
 The `DocumentID` would be `myProduct_blog_check-out-our-new-blog-commetns-system`. If that page was moved to a different URL, for example because someone mis-spelled `commetns` in the URL, then the `DocumentID` would change and the existing comments would be lost. 
+
+----
 
 # HTTP API
 
