@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"image"
 	"image/color"
 	"image/png"
@@ -51,7 +52,7 @@ type Comment struct {
 	Replies          []*Comment `json:"replies,omitempty"`
 }
 
-type UnsubscribeFromNotificationsOnDocument struct {
+type CommentedDocument struct {
 	URL           string `json:"url,omitempty"`
 	DocumentTitle string `json:"documentTitle,omitempty"`
 	Email         string `json:"email"`
@@ -62,6 +63,7 @@ var origins []string
 var portString = "$COMMENTS_LISTEN_PORT"
 var captchaAPIToken = "$COMMENTS_CAPTCHA_API_TOKEN"
 var captchaAPIURLString = "$COMMENTS_CAPTCHA_URL"
+var commentsBasePath = "$COMMENTS_BASE_PATH"
 var commentsURLString = "$COMMENTS_BASE_URL"
 
 // Note that every difficulty level is 16x more difficult than the last.
@@ -86,9 +88,17 @@ var db *bolt.DB
 var httpClient *http.Client
 
 var markdownRenderer *markdown_to_html.Renderer
+var errBucketNotFound = errors.New("bucket not found")
 
 func main() {
 
+	commentsBasePath = os.ExpandEnv(commentsBasePath)
+	if !strings.HasPrefix(commentsBasePath, "/") {
+		commentsBasePath = fmt.Sprintf("/%s", commentsBasePath)
+	}
+	if strings.HasSuffix(commentsBasePath, "/") {
+		commentsBasePath = strings.TrimSuffix(commentsBasePath, "/")
+	}
 	commentsURLString = os.ExpandEnv(commentsURLString)
 	if strings.HasSuffix(commentsURLString, "/") {
 		commentsURLString = strings.TrimSuffix(commentsURLString, "/")
@@ -104,6 +114,8 @@ func main() {
 	}
 	originsCSV := os.ExpandEnv("$COMMENTS_CORS_ORIGINS")
 	origins = splitNonEmpty(originsCSV, ",")
+	log.Printf("Allowed CORS Origins: [\n%s\n]\n", strings.Join(origins, "\n"))
+
 	captchaAPIToken = os.ExpandEnv(captchaAPIToken)
 	captchaAPIURLString = os.ExpandEnv(captchaAPIURLString)
 	captchaAPIURL, err = url.Parse(captchaAPIURLString)
@@ -171,19 +183,25 @@ func main() {
 		Flags: markdown_to_html.CommonFlags | markdown_to_html.HrefTargetBlank,
 	})
 
-	http.HandleFunc("/api/", comments)
+	http.HandleFunc(fmt.Sprintf("%s/api/", commentsBasePath), comments)
 
-	http.HandleFunc("/admin/", admin)
+	http.HandleFunc(fmt.Sprintf("%s/admin/", commentsBasePath), admin)
 
-	http.HandleFunc("/avatar/", serveAvatar)
+	http.HandleFunc(fmt.Sprintf("%s/avatar/", commentsBasePath), serveAvatar)
 
-	http.HandleFunc("/disable/", disableNotification)
+	http.HandleFunc(fmt.Sprintf("%s/disable/", commentsBasePath), disableNotification)
 
-	http.HandleFunc("/unsubscribe/", unsubscribeNotification)
+	http.HandleFunc(fmt.Sprintf("%s/unsubscribe/", commentsBasePath), unsubscribeNotification)
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	staticPath := fmt.Sprintf("%s/static/", commentsBasePath)
+	http.Handle(staticPath, http.StripPrefix(staticPath, http.FileServer(http.Dir("./static/"))))
 
-	http.ListenAndServe(fmt.Sprintf(":%d", portNumber), nil)
+	log.Printf(" 💬   SequentialRead Comments listening on ':%d', base path '%s'\n", portNumber, commentsBasePath)
+
+	err = http.ListenAndServe(fmt.Sprintf(":%d", portNumber), nil)
+
+	// if it got this far it means the server crashed!
+	panic(err)
 }
 
 func comments(response http.ResponseWriter, request *http.Request) {
@@ -215,11 +233,118 @@ func comments(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func admin(response http.ResponseWriter, request *http.Request) {
-	addCORSHeaders(response, request)
-	response.WriteHeader(500)
-	response.Write([]byte("500 not implemented"))
-	//importComments(response, request)
+func admin(responseWriter http.ResponseWriter, request *http.Request) {
+	username, password, ok := request.BasicAuth()
+	if !ok || username != "admin" || password != adminPassword {
+		log.Printf("admin api auth fail: '%s:%s', ok=%t", username, password, ok)
+		responseWriter.WriteHeader(401)
+		responseWriter.Write([]byte("401 unauthorized"))
+		return
+	}
+	pathSplit := splitNonEmpty(request.URL.Path, "/")
+	var err error
+	var templateBytes []byte
+	var htmlTemplate *template.Template
+	templateData := struct {
+		Documents     []CommentedDocument
+		DocumentTitle string
+		Comments      []Comment
+	}{
+		Documents: []CommentedDocument{},
+		Comments:  []Comment{},
+	}
+	templateBytes, err = ioutil.ReadFile("admin.html.gotemplate")
+	if err == nil {
+		htmlTemplate, err = template.New("admin").Parse(string(templateBytes))
+	}
+	if err != nil {
+		log.Printf("failed to load admin.html.gotemplate: %v", err)
+		responseWriter.WriteHeader(500)
+		responseWriter.Write([]byte("500 internal server error"))
+		return
+	}
+
+	if pathSplit[len(pathSplit)-1] == "admin" {
+		err = db.View(func(tx *bolt.Tx) error {
+			bucket, err := tx.CreateBucketIfNotExists([]byte("posts_index"))
+			if err != nil {
+				return err
+			}
+			err = bucket.ForEach(func(k, v []byte) error {
+				var document CommentedDocument
+				err = json.Unmarshal(v, &document)
+				if err != nil {
+					return err
+				}
+				templateData.Documents = append(templateData.Documents, document)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	} else {
+		postID := pathSplit[len(pathSplit)-1]
+		if request.Method == "POST" {
+			err = request.ParseForm()
+			if err == nil {
+				date := request.Form.Get("date")
+				err = db.Update(func(tx *bolt.Tx) error {
+					bucket := tx.Bucket([]byte(fmt.Sprintf("posts/%s", postID)))
+					if bucket == nil {
+						return errBucketNotFound
+					}
+					bucket.Delete([]byte(fmt.Sprintf("%s_%s", postID, date)))
+					return nil
+				})
+			}
+		}
+		if err == nil {
+			err = db.View(func(tx *bolt.Tx) error {
+				bucket := tx.Bucket([]byte(fmt.Sprintf("posts/%s", postID)))
+				if bucket == nil {
+					return errBucketNotFound
+				}
+				err = bucket.ForEach(func(k, v []byte) error {
+					var comment Comment
+					err = json.Unmarshal(v, &comment)
+					if err != nil {
+						return err
+					}
+					if templateData.DocumentTitle == "" {
+						templateData.DocumentTitle = comment.DocumentTitle
+					}
+					templateData.Comments = append(templateData.Comments, comment)
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+	}
+
+	if err == errBucketNotFound {
+		responseWriter.WriteHeader(404)
+		responseWriter.Write([]byte("404 bucket not found"))
+		return
+	}
+
+	var buffer bytes.Buffer
+	if err == nil {
+		err = htmlTemplate.Execute(&buffer, templateData)
+	}
+
+	if err != nil {
+		log.Printf("failed to load admin api index page: %v", err)
+		responseWriter.WriteHeader(500)
+		responseWriter.Write([]byte("500 internal server error"))
+		return
+	}
+
+	responseWriter.Write(buffer.Bytes())
 }
 
 func addCORSHeaders(response http.ResponseWriter, request *http.Request) {
@@ -318,6 +443,15 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 			return err
 		}
 		err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
+		if err != nil {
+			return err
+		}
+
+		bucket, err = tx.CreateBucketIfNotExists([]byte("posts_index"))
+		if err != nil {
+			return err
+		}
+		err = bucket.Put([]byte(postID), postedBytes)
 		if err != nil {
 			return err
 		}
@@ -440,7 +574,7 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 			unsubID := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s%s", email, hashSalt))))[0:8]
 			muteDocumentID := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s%s%s", email, notifiedComment.DocumentID, hashSalt))))[0:8]
 
-			muteDocument := UnsubscribeFromNotificationsOnDocument{
+			muteDocument := CommentedDocument{
 				URL:           notifiedComment.URL,
 				DocumentID:    notifiedComment.DocumentID,
 				DocumentTitle: notifiedComment.DocumentTitle,
@@ -733,7 +867,7 @@ func disableNotification(responseWriter http.ResponseWriter, request *http.Reque
 		if disableNotificationBytes == nil {
 			return fmt.Errorf("email_document_notifications %s not found", disableID)
 		}
-		var disableNotificationObj UnsubscribeFromNotificationsOnDocument
+		var disableNotificationObj CommentedDocument
 		err = json.Unmarshal(disableNotificationBytes, &disableNotificationObj)
 		if err != nil {
 			return err
@@ -1035,88 +1169,99 @@ func HSVColor(H, S, V float64) color.RGBA {
 	return color.RGBA{uint8(int((m + r) * float64(255))), uint8(int((m + g) * float64(255))), uint8(int((m + b) * float64(255))), 0xff}
 }
 
-// func importComments(responseWriter http.ResponseWriter, request *http.Request) {
+func importComments(responseWriter http.ResponseWriter, request *http.Request) {
 
-// 	bodyBytes, err := ioutil.ReadAll(request.Body)
-// 	if err != nil {
-// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-// 		return
-// 	}
-// 	var comments []*Comment
-// 	err = json.Unmarshal(bodyBytes, &comments)
-// 	if err != nil {
-// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-// 		return
-// 	}
+	bodyBytes, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+		return
+	}
+	var comments []*Comment
+	err = json.Unmarshal(bodyBytes, &comments)
+	if err != nil {
+		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+		return
+	}
 
-// 	for _, postedComment := range comments {
+	for _, postedComment := range comments {
 
-// 		postID := postedComment.DocumentID
-// 		var avatarBytes []byte
-// 		var avatarContentType string
-// 		var sha256Hash string
-// 		postedComment.Email = strings.ToLower(postedComment.Email)
-// 		md5Hash := postedComment.AvatarHash
-// 		saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
-// 		sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
+		postID := postedComment.DocumentID
+		var avatarBytes []byte
+		var avatarContentType string
+		var sha256Hash string
 
-// 		response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
-// 		if err == nil && response.StatusCode == 200 {
-// 			responseBytes, err := ioutil.ReadAll(response.Body)
-// 			if err == nil {
-// 				avatarBytes = responseBytes
-// 				avatarContentType = response.Header.Get("Content-Type")
-// 			}
-// 		}
+		if postedComment.AvatarHash != "" {
+			md5Hash := postedComment.AvatarHash
+			saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
+			sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
 
-// 		err = db.Update(func(tx *bolt.Tx) error {
-// 			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
-// 			if err != nil {
-// 				return err
-// 			}
+			response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
+			if err == nil && response.StatusCode == 200 {
+				responseBytes, err := ioutil.ReadAll(response.Body)
+				if err == nil {
+					avatarBytes = responseBytes
+					avatarContentType = response.Header.Get("Content-Type")
+				}
+			}
+		}
 
-// 			// fields that are computed on read
-// 			postedComment.Replies = nil
-// 			postedComment.BodyHTML = ""
+		err = db.Update(func(tx *bolt.Tx) error {
+			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
+			if err != nil {
+				return err
+			}
 
-// 			// metadata fields
-// 			postedComment.AvatarType = ""
-// 			postedComment.CaptchaChallenge = ""
-// 			postedComment.CaptchaNonce = ""
+			// fields that are computed on read
+			postedComment.Replies = nil
+			postedComment.BodyHTML = ""
 
-// 			// fields that are computed on write
-// 			if sha256Hash != "" {
-// 				postedComment.AvatarHash = sha256Hash[:6]
-// 			}
+			// metadata fields
+			postedComment.AvatarType = ""
+			postedComment.CaptchaChallenge = ""
+			postedComment.CaptchaNonce = ""
 
-// 			postedBytes, err := json.Marshal(postedComment)
-// 			if err != nil {
-// 				return err
-// 			}
-// 			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
-// 			if err != nil {
-// 				return err
-// 			}
+			// fields that are computed on write
+			if sha256Hash != "" {
+				postedComment.AvatarHash = sha256Hash[:6]
+			}
 
-// 			if avatarBytes != nil && len(avatarBytes) > 0 {
-// 				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
-// 				if err != nil {
-// 					return err
-// 				}
-// 				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
-// 				if err != nil {
-// 					return err
-// 				}
-// 				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
-// 			}
-// 			return err
-// 		})
+			postedBytes, err := json.Marshal(postedComment)
+			if err != nil {
+				return err
+			}
+			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
+			if err != nil {
+				return err
+			}
 
-// 		if err != nil {
-// 			responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-// 			return
-// 		}
-// 	}
+			bucket, err = tx.CreateBucketIfNotExists([]byte("posts_index"))
+			if err != nil {
+				return err
+			}
+			err = bucket.Put([]byte(postID), postedBytes)
+			if err != nil {
+				return err
+			}
 
-// 	responseWriter.Write([]byte("ok"))
-// }
+			if avatarBytes != nil && len(avatarBytes) > 0 {
+				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
+				if err != nil {
+					return err
+				}
+				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
+				if err != nil {
+					return err
+				}
+				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
+			}
+			return err
+		})
+
+		if err != nil {
+			responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+			return
+		}
+	}
+
+	responseWriter.Write([]byte("ok"))
+}

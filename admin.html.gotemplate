@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>comments admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="../static/comments.css" rel="stylesheet">
+
+</head>
+<body>
+{{ if .Comments }}
+  <h1>comments on '{{ .DocumentTitle }}'</h1>
+  <div class="sqr-comments">
+  {{ range .Comments }}
+    <div class="sqr-comment">
+      {{ if .AvatarHash }}
+        <img class="sqr-avatar" src="../avatar/{{ .AvatarHash }}"></img>
+      {{ else }}
+        <img class="sqr-avatar" src="../static/anon.png"></img>
+      {{ end }}
+      <div class="post-col">
+        <div>
+          <span class="sqr-username">{{ .Username }}</span>
+          <span class="sqr-userid">{{ .AvatarHash }}</span>
+          <span class="sqr-documentId" style="display:none;">{{ .DocumentID }}</span>
+          <span class="sqr-date">{{ .Date }}</span>
+          <form style="display: inline-block; padding:" method="POST" action="#">
+            <input type="hidden" name="date" value="{{ .Date }}"/>
+            <input type="submit" name="submit" value="❌ DELETE"/>
+          </form>
+        </div>
+        <pre>
+        {{ .Body }}
+        </pre>
+      </div>
+    </div>
+  {{ end }}
+  </div>
+{{ else }}
+  <h1>comments admin</h1>
+
+  <ul>
+    {{ range .Documents }}
+      <li><a href="{{ .DocumentID }}">{{ .DocumentTitle }}</a></li>
+    {{ end }}
+  </ul>
+{{ end }}
+</body>
+</html>
+
