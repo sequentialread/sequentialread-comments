@@ -217,9 +217,9 @@ func comments(response http.ResponseWriter, request *http.Request) {
 
 func admin(response http.ResponseWriter, request *http.Request) {
 	addCORSHeaders(response, request)
-	// response.WriteHeader(500)
-	// response.Write([]byte("500 not implemented"))
-	importComments(response, request)
+	response.WriteHeader(500)
+	response.Write([]byte("500 not implemented"))
+	//importComments(response, request)
 }
 
 func addCORSHeaders(response http.ResponseWriter, request *http.Request) {
@@ -268,8 +268,7 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 	if postedComment.Email != "" {
 		postedComment.Email = strings.ToLower(postedComment.Email)
 		md5Hash := fmt.Sprintf("%x", md5.Sum([]byte(postedComment.Email)))
-		salt := "983q4gh_8778g4ilb.sDkjg09834goj4p9-023u0_mjpmodsmg"
-		saltedInput := fmt.Sprintf("%s%s", md5Hash, salt)
+		saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
 		sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
 
 		if postedComment.AvatarType == "gravatar" {
@@ -841,13 +840,13 @@ Powered by SequentialRead Comments: https://git.sequentialread.com/forest/sequen
 <br/>
 <br/>
 <div style="padding:2em; border-top: 1px solid #aaa;">
-<span style="font-size:0.8em; opacity:0.8;">If you believe you have recieved this message in error, please click the unsubscribe link below.</span><br/>
+<span style="font-size:0.9em">If you believe you have recieved this message in error, please click the unsubscribe link below.</span><br/>
 <br/>
-<a style="font-size:0.8em; opacity:0.8;" href="%s">disable notifications for future comments on this article</a>
-| <a style="font-size:0.8em; opacity:0.8;" href="%s">completely unsubscribe from all email from this service</a><br/>
+<a style="font-size:0.9em" href="%s">disable notifications for future comments on this article</a>
+| <a style="font-size:0.9em" href="%s">completely unsubscribe from all email from this service</a><br/>
 <br/>
 <br/>
-Powered by <a style="font-size:0.8em; opacity:0.8;" href="https://git.sequentialread.com/forest/sequentialread-comments">SequentialRead Comments</a>
+Powered by <a style="font-size:0.9em" href="https://git.sequentialread.com/forest/sequentialread-comments">SequentialRead Comments</a>
 </div>
 
 `, addressedTo, other, notifiedComment.URL, postedComment.DocumentID, postedComment.Date,
@@ -1036,92 +1035,88 @@ func HSVColor(H, S, V float64) color.RGBA {
 	return color.RGBA{uint8(int((m + r) * float64(255))), uint8(int((m + g) * float64(255))), uint8(int((m + b) * float64(255))), 0xff}
 }
 
-func importComments(response http.ResponseWriter, request *http.Request) {
+// func importComments(responseWriter http.ResponseWriter, request *http.Request) {
 
-	bodyBytes, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		response.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
-	var comments []Comment
-	err = json.Unmarshal(bodyBytes, &comments)
-	if err != nil {
-		response.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
+// 	bodyBytes, err := ioutil.ReadAll(request.Body)
+// 	if err != nil {
+// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
+// 	var comments []*Comment
+// 	err = json.Unmarshal(bodyBytes, &comments)
+// 	if err != nil {
+// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
 
-	for _, postedComment := range comments {
+// 	for _, postedComment := range comments {
 
-		postID := postedComment.DocumentID
-		var avatarBytes []byte
-		var avatarContentType string
-		var sha256Hash string
-		if postedComment.Email != "" {
-			md5Hash := postedComment.AvatarHash
+// 		postID := postedComment.DocumentID
+// 		var avatarBytes []byte
+// 		var avatarContentType string
+// 		var sha256Hash string
+// 		postedComment.Email = strings.ToLower(postedComment.Email)
+// 		md5Hash := postedComment.AvatarHash
+// 		saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
+// 		sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
 
-			sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s%s", md5Hash, hashSalt))))
+// 		response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
+// 		if err == nil && response.StatusCode == 200 {
+// 			responseBytes, err := ioutil.ReadAll(response.Body)
+// 			if err == nil {
+// 				avatarBytes = responseBytes
+// 				avatarContentType = response.Header.Get("Content-Type")
+// 			}
+// 		}
 
-			response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
-			if err == nil && response.StatusCode == 200 {
-				responseBytes, err := ioutil.ReadAll(response.Body)
-				if err == nil {
-					avatarBytes = responseBytes
-					avatarContentType = response.Header.Get("Content-Type")
-				}
-			}
-		}
+// 		err = db.Update(func(tx *bolt.Tx) error {
+// 			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
+// 			if err != nil {
+// 				return err
+// 			}
 
-		err = db.Update(func(tx *bolt.Tx) error {
-			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
-			if err != nil {
-				return err
-			}
-			// fields that are computed on read
-			postedComment.Replies = nil
-			postedComment.BodyHTML = ""
+// 			// fields that are computed on read
+// 			postedComment.Replies = nil
+// 			postedComment.BodyHTML = ""
 
-			// metadata fields
-			postedComment.CaptchaChallenge = ""
-			postedComment.CaptchaNonce = ""
-			// only save the email if the user requested it
-			if postedComment.NotifyOfReplies == "" || postedComment.NotifyOfReplies == "off" {
-				postedComment.Email = ""
-			}
+// 			// metadata fields
+// 			postedComment.AvatarType = ""
+// 			postedComment.CaptchaChallenge = ""
+// 			postedComment.CaptchaNonce = ""
 
-			// fields that are computed on write
-			if sha256Hash != "" {
-				postedComment.AvatarHash = sha256Hash[0:6]
-			}
-			postedComment.DocumentID = postID
-			postedComment.Date = getMillisecondsSinceUnixEpoch()
-			postedBytes, err := json.Marshal(postedComment)
-			if err != nil {
-				return err
-			}
-			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
-			if err != nil {
-				return err
-			}
+// 			// fields that are computed on write
+// 			if sha256Hash != "" {
+// 				postedComment.AvatarHash = sha256Hash[:6]
+// 			}
 
-			if avatarBytes != nil && len(avatarBytes) > 0 {
-				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
-				if err != nil {
-					return err
-				}
-				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
-				if err != nil {
-					return err
-				}
-				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
-			}
-			return err
-		})
+// 			postedBytes, err := json.Marshal(postedComment)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
+// 			if err != nil {
+// 				return err
+// 			}
 
-		if err != nil {
-			response.Write([]byte(fmt.Sprintf("%v", err)))
-			return
-		}
-	}
+// 			if avatarBytes != nil && len(avatarBytes) > 0 {
+// 				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
+// 				if err != nil {
+// 					return err
+// 				}
+// 				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
+// 			}
+// 			return err
+// 		})
 
-	response.Write([]byte("ok"))
-}
+// 		if err != nil {
+// 			responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 			return
+// 		}
+// 	}
+
+// 	responseWriter.Write([]byte("ok"))
+// }

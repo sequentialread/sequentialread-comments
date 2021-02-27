@@ -79,7 +79,7 @@
 
         createElement(comment, "img", { 
           "class": "sqr-gravatar",
-          "src": `${commentsURL}/avatar/${x.avatarHash}`
+          "src": x.avatarHash ? `${commentsURL}/avatar/${x.avatarHash}` : `${commentsURL}/static/anon.png`
         });
         const postColumn = createElement(comment, "div", { "class": "sqr-post-column" });
         if(window.location.hash == `#${postID}`) {
