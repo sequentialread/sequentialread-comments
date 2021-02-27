@@ -108,8 +108,9 @@
   padding: 0 4px;
   border-radius: 4px;
 }
-.sqr-selected-radio {
-  background-color: #f6ff72;
+.sqr-radio-row label .sqr-selected-radio {
+  background-color: #f8feac;
+  border-radius: 8px;
 }
 
 .sqr-radio-row label span {
