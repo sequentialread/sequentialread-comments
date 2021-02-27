@@ -193,6 +193,8 @@ func main() {
 
 	http.HandleFunc(fmt.Sprintf("%s/unsubscribe/", commentsBasePath), unsubscribeNotification)
 
+	//http.HandleFunc(fmt.Sprintf("%s/import/", commentsBasePath), importComments)
+
 	staticPath := fmt.Sprintf("%s/static/", commentsBasePath)
 	http.Handle(staticPath, http.StripPrefix(staticPath, http.FileServer(http.Dir("./static/"))))
 
@@ -236,11 +238,14 @@ func comments(response http.ResponseWriter, request *http.Request) {
 func admin(responseWriter http.ResponseWriter, request *http.Request) {
 	username, password, ok := request.BasicAuth()
 	if !ok || username != "admin" || password != adminPassword {
-		log.Printf("admin api auth fail: '%s:%s', ok=%t", username, password, ok)
+		log.Printf("admin api auth fail: '%s:******', ok=%t", username, ok)
+
+		responseWriter.Header().Set("WWW-Authenticate", "Basic realm=\"comments admin\"")
 		responseWriter.WriteHeader(401)
 		responseWriter.Write([]byte("401 unauthorized"))
 		return
 	}
+
 	pathSplit := splitNonEmpty(request.URL.Path, "/")
 	var err error
 	var templateBytes []byte
@@ -265,7 +270,7 @@ func admin(responseWriter http.ResponseWriter, request *http.Request) {
 	}
 
 	if pathSplit[len(pathSplit)-1] == "admin" {
-		err = db.View(func(tx *bolt.Tx) error {
+		err = db.Update(func(tx *bolt.Tx) error {
 			bucket, err := tx.CreateBucketIfNotExists([]byte("posts_index"))
 			if err != nil {
 				return err
@@ -1169,99 +1174,99 @@ func HSVColor(H, S, V float64) color.RGBA {
 	return color.RGBA{uint8(int((m + r) * float64(255))), uint8(int((m + g) * float64(255))), uint8(int((m + b) * float64(255))), 0xff}
 }
 
-func importComments(responseWriter http.ResponseWriter, request *http.Request) {
+// func importComments(responseWriter http.ResponseWriter, request *http.Request) {
 
-	bodyBytes, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
-	var comments []*Comment
-	err = json.Unmarshal(bodyBytes, &comments)
-	if err != nil {
-		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-		return
-	}
+// 	bodyBytes, err := ioutil.ReadAll(request.Body)
+// 	if err != nil {
+// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
+// 	var comments []*Comment
+// 	err = json.Unmarshal(bodyBytes, &comments)
+// 	if err != nil {
+// 		responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 		return
+// 	}
 
-	for _, postedComment := range comments {
+// 	for _, postedComment := range comments {
 
-		postID := postedComment.DocumentID
-		var avatarBytes []byte
-		var avatarContentType string
-		var sha256Hash string
+// 		postID := postedComment.DocumentID
+// 		var avatarBytes []byte
+// 		var avatarContentType string
+// 		var sha256Hash string
 
-		if postedComment.AvatarHash != "" {
-			md5Hash := postedComment.AvatarHash
-			saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
-			sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
+// 		if postedComment.AvatarHash != "" {
+// 			md5Hash := postedComment.AvatarHash
+// 			saltedInput := fmt.Sprintf("%s%s", md5Hash, hashSalt)
+// 			sha256Hash = fmt.Sprintf("%x", sha256.Sum256([]byte(saltedInput)))
 
-			response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
-			if err == nil && response.StatusCode == 200 {
-				responseBytes, err := ioutil.ReadAll(response.Body)
-				if err == nil {
-					avatarBytes = responseBytes
-					avatarContentType = response.Header.Get("Content-Type")
-				}
-			}
-		}
+// 			response, err := httpClient.Get(fmt.Sprintf("https://www.gravatar.com/avatar/%s?d=retro", md5Hash))
+// 			if err == nil && response.StatusCode == 200 {
+// 				responseBytes, err := ioutil.ReadAll(response.Body)
+// 				if err == nil {
+// 					avatarBytes = responseBytes
+// 					avatarContentType = response.Header.Get("Content-Type")
+// 				}
+// 			}
+// 		}
 
-		err = db.Update(func(tx *bolt.Tx) error {
-			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
-			if err != nil {
-				return err
-			}
+// 		err = db.Update(func(tx *bolt.Tx) error {
+// 			bucket, err := tx.CreateBucketIfNotExists([]byte(fmt.Sprintf("posts/%s", postID)))
+// 			if err != nil {
+// 				return err
+// 			}
 
-			// fields that are computed on read
-			postedComment.Replies = nil
-			postedComment.BodyHTML = ""
+// 			// fields that are computed on read
+// 			postedComment.Replies = nil
+// 			postedComment.BodyHTML = ""
 
-			// metadata fields
-			postedComment.AvatarType = ""
-			postedComment.CaptchaChallenge = ""
-			postedComment.CaptchaNonce = ""
+// 			// metadata fields
+// 			postedComment.AvatarType = ""
+// 			postedComment.CaptchaChallenge = ""
+// 			postedComment.CaptchaNonce = ""
 
-			// fields that are computed on write
-			if sha256Hash != "" {
-				postedComment.AvatarHash = sha256Hash[:6]
-			}
+// 			// fields that are computed on write
+// 			if sha256Hash != "" {
+// 				postedComment.AvatarHash = sha256Hash[:6]
+// 			}
 
-			postedBytes, err := json.Marshal(postedComment)
-			if err != nil {
-				return err
-			}
-			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
-			if err != nil {
-				return err
-			}
+// 			postedBytes, err := json.Marshal(postedComment)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			err = bucket.Put([]byte(fmt.Sprintf("%015d", postedComment.Date)), postedBytes)
+// 			if err != nil {
+// 				return err
+// 			}
 
-			bucket, err = tx.CreateBucketIfNotExists([]byte("posts_index"))
-			if err != nil {
-				return err
-			}
-			err = bucket.Put([]byte(postID), postedBytes)
-			if err != nil {
-				return err
-			}
+// 			bucket, err = tx.CreateBucketIfNotExists([]byte("posts_index"))
+// 			if err != nil {
+// 				return err
+// 			}
+// 			err = bucket.Put([]byte(postID), postedBytes)
+// 			if err != nil {
+// 				return err
+// 			}
 
-			if avatarBytes != nil && len(avatarBytes) > 0 {
-				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
-				if err != nil {
-					return err
-				}
-				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
-				if err != nil {
-					return err
-				}
-				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
-			}
-			return err
-		})
+// 			if avatarBytes != nil && len(avatarBytes) > 0 {
+// 				bucket, err = tx.CreateBucketIfNotExists([]byte("avatars"))
+// 				if err != nil {
+// 					return err
+// 				}
+// 				err = bucket.Put([]byte(postedComment.AvatarHash), avatarBytes)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				err = bucket.Put([]byte(fmt.Sprintf("%s_content-type", postedComment.AvatarHash)), []byte(avatarContentType))
+// 			}
+// 			return err
+// 		})
 
-		if err != nil {
-			responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
-			return
-		}
-	}
+// 		if err != nil {
+// 			responseWriter.Write([]byte(fmt.Sprintf("%v", err)))
+// 			return
+// 		}
+// 	}
 
-	responseWriter.Write([]byte("ok"))
-}
+// 	responseWriter.Write([]byte("ok"))
+// }

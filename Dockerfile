@@ -21,5 +21,6 @@ WORKDIR /app
 COPY --from=build /build/sequentialread-comments /app/sequentialread-comments
 #COPY comments.html.gotemplate /app/comments.html.gotemplate
 COPY static /app/static
+COPY admin.html.gotemplate /app/admin.html.gotemplate
 RUN chmod +x /app/sequentialread-comments
 ENTRYPOINT ["/app/sequentialread-comments"]

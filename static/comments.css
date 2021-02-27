@@ -84,6 +84,17 @@
   margin-bottom:6px;
 }
 
+.sqr-comment-form-hidden,
+.sqr-error.sqr-comment-form-hidden {
+  display: none;
+}
+
+.sqr-error-mini {
+  margin-left: 1em;
+  padding: 2px 8px;
+}
+
+
 .sqr-radio-row {
   display: flex;
   align-items: center;

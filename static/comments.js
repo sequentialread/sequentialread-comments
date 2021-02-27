@@ -116,6 +116,7 @@
           "id": `sqr-form-container-${postID}`,
           "class": "sqr-reply-to-comment-form"
         });
+        formContainer.style.marginLeft = `-${indent}em`;
         replyButton.onclick = () => {
           rootReplyButton.style.display = 'inline-block';
           displayCommentForm(formContainer, response, postID)
@@ -168,8 +169,14 @@
     createElement(nameLabel, "input", { "type": "text", "name": "username" });
     createElement(commentForm, "br");
     const emailLabel = createElement(commentForm, "label", null, "Email: ");
-    createElement(emailLabel, "input", { "type": "text", "name": "email" });
-    appendFragment(emailLabel, " (optional)");
+    const emailInput = createElement(emailLabel, "input", { "type": "text", "name": "email" });
+    const emailDescNoNotification = createElement(emailLabel, "span", null, " (optional, ");
+    createElement(emailDescNoNotification, "a", { 
+      target: "_blank",
+      href: "https://git.sequentialread.com/forest/sequentialread-comments/src/b0bd22106210dcd71c47dc48959939276ece7d3d/main.go#L306" 
+    }, " not stored ");
+    appendFragment(emailDescNoNotification, ")");
+    const emailDescError = createElement(emailLabel, "span", { class: "sqr-error sqr-error-mini sqr-comment-form-hidden" }, "invalid notification email");
 
     createElement(commentForm, "br");
     const notifyRow = createElement(commentForm, "div", { "class": "sqr-radio-row" }, "Email Notifications: ");
@@ -182,7 +189,25 @@
     createElement(notifyThreadLabel, "input", { type: "radio", name: "notifyOfReplies", value: "child+sibling" });
     createElement(notifyThreadLabel, "span", null,  " Notify on New Replies");
 
+    const validateEmail = () => {
+      const notificationSetting = Array.from(notifyRow.querySelectorAll("input")).filter(x => x.checked)[0].value;
+      const emailSplit = emailInput.value.split("@");
+      const emailValid = emailSplit.length == 2 && emailSplit[1].split(".").length > 1;
+      if(notificationSetting != "off") {
+        emailDescNoNotification.classList.add("sqr-comment-form-hidden");
+        emailDescError.classList[emailValid ? "add" : "remove"]("sqr-comment-form-hidden");
+      } else {
+        emailDescNoNotification.classList.remove("sqr-comment-form-hidden");
+        emailDescError.classList.add("sqr-comment-form-hidden");
+      }
+    };
+    emailInput.addEventListener("change", validateEmail);
+    emailInput.addEventListener("keyup", validateEmail);
+    emailInput.addEventListener("blur", validateEmail);
+    emailInput.addEventListener('input', validateEmail);
+
     Array.from(notifyRow.querySelectorAll("input")).forEach(x => x.addEventListener("change", () => {
+      validateEmail();
       Array.from(notifyRow.querySelectorAll("input")).forEach(y => {
         y.parentElement.classList[y.checked ? 'add' : 'remove']("sqr-selected-radio");
       });
