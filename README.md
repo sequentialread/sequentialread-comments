@@ -217,49 +217,49 @@ This section is a stub. See source code for details. You don't need to interact 
 
 All of the routes under `/admin` require [HTTP Basic Authentication](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme). Username will be `admin` and password will be whatever you set for [`COMMENTS_ADMIN_PASSWORD`](#comments_admin_password).
 
-#### GET /api/<DocumentID>
+#### `GET /api/<DocumentID>`
 
 Get the JSON list of comments for a document.
 
 ----
 
-#### POST /api/<DocumentID>
+#### `POST /api/<DocumentID>`
 
 Post a new comment.
 
 ----
 
-#### GET /admin
+#### `GET /admin`
 
 Display the list of documents that have comments.
 
 ----
 
-#### GET /admin/<DocumentID>
+#### `GET /admin/<DocumentID>`
 
 Display the list of comments for a document
 
 ----
 
-#### POST /admin/<DocumentID>
+#### `POST /admin/<DocumentID>`
 
 Delete a comment.
 
 ----
 
-#### GET /avatar
+#### `GET /avatar`
 
 Get an avatar image.
 
 ----
 
-#### GET /disable/<token>
+#### `GET /disable/<token>`
 
 Disable email notifications for a given user for a given post.
 
 ----
 
-#### GET /unsubscribe/<token>
+#### `GET /unsubscribe/<token>`
 
 Disable email notifications for a given user.
 
