@@ -185,7 +185,11 @@ func main() {
 
 	http.HandleFunc(fmt.Sprintf("%s/api/", commentsBasePath), comments)
 
-	http.HandleFunc(fmt.Sprintf("%s/admin/", commentsBasePath), admin)
+	if adminPassword == "" {
+		log.Println("WARNING: COMMENTS_ADMIN_PASSWORD environment variable was not set. The admin API will be turned off.")
+	} else {
+		http.HandleFunc(fmt.Sprintf("%s/admin/", commentsBasePath), admin)
+	}
 
 	http.HandleFunc(fmt.Sprintf("%s/avatar/", commentsBasePath), serveAvatar)
 
@@ -291,18 +295,23 @@ func admin(responseWriter http.ResponseWriter, request *http.Request) {
 		})
 	} else {
 		postID := pathSplit[len(pathSplit)-1]
+
 		if request.Method == "POST" {
 			err = request.ParseForm()
 			if err == nil {
 				date := request.Form.Get("date")
-				err = db.Update(func(tx *bolt.Tx) error {
-					bucket := tx.Bucket([]byte(fmt.Sprintf("posts/%s", postID)))
-					if bucket == nil {
-						return errBucketNotFound
-					}
-					bucket.Delete([]byte(fmt.Sprintf("%s_%s", postID, date)))
-					return nil
-				})
+				var dateInt int64
+				dateInt, err = strconv.ParseInt(date, 10, 64)
+				if err == nil {
+					err = db.Update(func(tx *bolt.Tx) error {
+						bucket := tx.Bucket([]byte(fmt.Sprintf("posts/%s", postID)))
+						if bucket == nil {
+							return errBucketNotFound
+						}
+						bucket.Delete([]byte(fmt.Sprintf("%015d", dateInt)))
+						return nil
+					})
+				}
 			}
 		}
 		if err == nil {
@@ -440,6 +449,9 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 		// fields that are computed on write
 		if sha256Hash != "" {
 			postedComment.AvatarHash = sha256Hash[:6]
+		}
+		if postedComment.Username == "" {
+			postedComment.Username = "Person Who Leaves Username Field Blank"
 		}
 		postedComment.DocumentID = postID
 		postedComment.Date = postedCommentDate
@@ -949,7 +961,12 @@ func sendEmailNotification(email string, postedComment, notifiedComment *Comment
 	bodyPlain := fmt.Sprintf(
 		`%s,
 
-%s posted a reply on the article '%s' at %s:
+%s posted a reply on the article 
+
+'%s' 
+
+at: %s
+
 
 %s
 
@@ -969,6 +986,8 @@ the following link in your web browser:
 
 Powered by SequentialRead Comments: https://git.sequentialread.com/forest/sequentialread-comments
 `, addressedTo, other, notifiedComment.DocumentTitle, notifiedComment.URL, postedComment.Body, disableArticleLink, unsubscribeLink)
+
+	bodyPlain = softWrapString(bodyPlain, 72)
 
 	bodyHTML := fmt.Sprintf(
 		`%s,<br/>
@@ -995,6 +1014,33 @@ Powered by <a style="font-size:0.9em" href="https://git.sequentialread.com/fores
 	if err != nil {
 		log.Printf("email delivery issue for %s: %v", email, err)
 	}
+}
+
+func softWrapString(text string, columns int) string {
+
+	lines := strings.Split(text, "\n")
+	newLines := []string{}
+	for _, line := range lines {
+		whitespaces := []int{}
+		runes := []rune(fmt.Sprintf("%s ", line))
+		for j := 0; j < len(runes); j++ {
+			if runes[j] == ' ' {
+				whitespaces = append(whitespaces, j)
+			}
+		}
+		offset := 0
+		for j := 0; j < len(whitespaces); j++ {
+			if j < len(whitespaces)-1 {
+				if whitespaces[j]-offset < columns && whitespaces[j+1]-offset > columns {
+					offset = whitespaces[j]
+					runes[whitespaces[j]] = '\n'
+				}
+			}
+		}
+		newLines = append(newLines, string(runes))
+	}
+	return strings.Join(newLines, "\n")
+
 }
 
 func sendEmail(to, subject, bodyPlain, bodyHTML string) error {
