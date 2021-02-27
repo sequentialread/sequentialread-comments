@@ -265,6 +265,6 @@ Disable email notifications for a given user.
 
 ----
 
-#### GET /static/<filename>
+#### `GET /static/<filename>`
 
 Get a static file like JavaScript, CSS, or the anonymous user avatar.
