@@ -13,7 +13,7 @@
 
   let currentFormContainer;
 
-  function displayCommentsFromJSON(responseRaw, justPosted) {
+  function displayCommentsFromJSON(responseRaw, justPostedReplyTo) {
     try {
       let response;
       if(typeof responseRaw == "string") {
@@ -53,6 +53,10 @@
         displayCommentForm(rootFormContainer, response, "root");
       };
 
+      if(justPostedReplyTo == "root" && response.error) {
+        rootReplyButton.onclick();
+      }
+
       if(!response.comments || response.comments.length == 0) {
         createElement(
           commentContainer, 
@@ -78,8 +82,9 @@
           "src": `${commentsURL}/avatar/${x.avatarHash}`
         });
         const postColumn = createElement(comment, "div", { "class": "sqr-post-column" });
-        if(window.location.fragment == postID) {
+        if(window.location.hash == `#${postID}`) {
           postColumn.classList.add("sqr-highlighted");
+          postColumn.scrollIntoView();
         }
         const postRow = createElement(postColumn, "div");
         createElement(postRow, "span", { "class": "sqr-username" }, x.username);
@@ -115,6 +120,9 @@
           rootReplyButton.style.display = 'inline-block';
           displayCommentForm(formContainer, response, postID)
         };
+        if(justPostedReplyTo == postID && response.error) {
+          replyButton.onclick();
+        }
         // TODO migrate to DOMPurify for this ?
         content.innerHTML = x.bodyHTML;
 
@@ -126,7 +134,7 @@
       // display the comment tree
       response.comments.forEach(x =>  displayComment(comments, null, x, 0));
 
-      if(justPosted) {
+      if(justPostedReplyTo && !response.error) {
         const justPostedElement = document.getElementById(mostRecentComment);
         if(justPostedElement) {
           justPostedElement.querySelector(".sqr-post-column").classList.add("sqr-highlighted");
@@ -171,7 +179,7 @@
     createElement(notifyOffLabel, "span", null, " Off");
 
     const notifyThreadLabel = createElement(notifyRow, "label");
-    createElement(notifyThreadLabel, "input", { type: "radio", name: "notifyOfReplies", value: "thread" });
+    createElement(notifyThreadLabel, "input", { type: "radio", name: "notifyOfReplies", value: "child+sibling" });
     createElement(notifyThreadLabel, "span", null,  " Notify on New Replies");
 
     Array.from(notifyRow.querySelectorAll("input")).forEach(x => x.addEventListener("change", () => {
@@ -198,6 +206,7 @@
 
     createElement(commentForm, "input", { "type": "hidden", "name": "inReplyTo", "value": inReplyTo });
     createElement(commentForm, "input", { "type": "hidden", "name": "url", "value": window.location.href });
+    createElement(commentForm, "input", { "type": "hidden", "name": "documentTitle", "value": document.title });
 
     createElement(commentForm, "textarea", { "name": "body", "rows": "5" });
     createElement(commentForm, "p", null, "Markdown is supported.");
@@ -261,7 +270,7 @@
         return result;
       }, {});
 
-    xhr("POST", `${commentsURL}/api/${documentID}`, payload, (response) => displayCommentsFromJSON(response, true));
+    xhr("POST", `${commentsURL}/api/${documentID}`, payload, (response) => displayCommentsFromJSON(response, payload.inReplyTo));
   }
 
   window.sqrCaptchaCompleted = function() {

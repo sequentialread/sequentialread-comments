@@ -44,7 +44,12 @@
 .sqr-submit-area button {
   float: right;
 }
-
+.sqr-comment-form	 {
+  background: #ddd;
+  border: 1em solid #ddd;
+  border-radius: 0.4em;
+  padding-bottom: 3em;
+}
 
 .sqr-comment-form	input[type='text'] {
 	padding: 2px;
@@ -70,6 +75,7 @@
   outline: 0;
   box-sizing: border-box;
   border-radius: 0.3rem;
+  padding: 0.5em;
 }
 
 .sqr-comment-form	textarea:focus {

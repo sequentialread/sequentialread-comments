@@ -11,6 +11,7 @@ RUN apk add --update --no-cache ca-certificates git \
   && go get github.com/SYM01/htmlsanitizer \
   && go get github.com/GeorgeMac/idicon/icon \ 
   && go get github.com/GeorgeMac/idicon/colour \
+  && go get github.com/xhit/go-simple-mail \
   && go get git.sequentialread.com/forest/pkg-errors
 COPY main.go /build/main.go
 RUN  go build -v $GO_BUILD_ARGS -o /build/sequentialread-comments .
