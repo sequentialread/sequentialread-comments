@@ -25,7 +25,18 @@
         response.captchaURL = response.captchaURL.substring(0, response.captchaURL.length-1);
       }
       
-      if(!document.querySelector(`link[href='${commentsURL}/static/comments.css']`)) {
+
+      const cssIsAlreadyLoaded = document.querySelector(`link[href='${commentsURL}/static/comments.css']`);
+
+      cssIsAlreadyLoaded = cssIsAlreadyLoaded || Array.from(document.styleSheets).some(x => {
+        try {
+          return Array.from(x.rules).some(x => x.selectorText == ".sqr-captcha")
+        } catch (err) {
+          return false
+        }
+      });
+
+      if(!cssIsAlreadyLoaded) {
         createElement(document.head, "link", {
           "rel": "stylesheet",
           "charset": "utf8",
