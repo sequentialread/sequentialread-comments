@@ -26,7 +26,7 @@
       }
       
 
-      const cssIsAlreadyLoaded = document.querySelector(`link[href='${commentsURL}/static/comments.css']`);
+      let cssIsAlreadyLoaded = document.querySelector(`link[href='${commentsURL}/static/comments.css']`);
 
       cssIsAlreadyLoaded = cssIsAlreadyLoaded || Array.from(document.styleSheets).some(x => {
         try {
