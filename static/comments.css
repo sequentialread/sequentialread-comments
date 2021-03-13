@@ -89,6 +89,10 @@
   display: none;
 }
 
+div[data-sqr-captcha-url] {
+  font-size: 10px;
+}
+
 .sqr-error-mini {
   margin-left: 1em;
   padding: 2px 8px;

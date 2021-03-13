@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,10 +28,10 @@ import (
 	"time"
 
 	errors "git.sequentialread.com/forest/pkg-errors"
-	"github.com/SYM01/htmlsanitizer"
 	"github.com/boltdb/bolt"
 	markdown "github.com/gomarkdown/markdown"
 	markdown_to_html "github.com/gomarkdown/markdown/html"
+	"github.com/sym01/htmlsanitizer"
 	mail "github.com/xhit/go-simple-mail"
 )
 
@@ -78,7 +79,7 @@ var emailHost = "$COMMENTS_EMAIL_HOST"
 var emailPort int
 var emailUsername = "$COMMENTS_EMAIL_USER"
 var emailPassword = "$COMMENTS_EMAIL_PASSWORD"
-var emailNotificationTarget = "$COMMENTS_NOTIFICATION_TARGET"
+var adminEmailNotificationTarget = "$COMMENTS_NOTIFICATION_TARGET"
 var emailNotificationsDisabled = false
 var adminPassword = "$COMMENTS_ADMIN_PASSWORD"
 var hashSalt = "$COMMENTS_HASH_SALT"
@@ -104,7 +105,7 @@ func main() {
 		commentsURLString = strings.TrimSuffix(commentsURLString, "/")
 	}
 	if commentsURLString == "" {
-		log.Printf("COMMENTS_BASE_URL is not set; email notifications will not work!")
+		log.Printf("COMMENTS_BASE_URL is not set; email notifications will not work!\n")
 		emailNotificationsDisabled = true
 	}
 	portString = os.ExpandEnv(portString)
@@ -136,30 +137,30 @@ func main() {
 	emailPort, err = strconv.Atoi(emailPortString)
 	if err != nil {
 		emailPort = 465
-		log.Printf("WARNING: Could not parse $COMMENTS_EMAIL_PORT (%s) as an integer: %s email notifications will not work!", emailPortString, err)
+		log.Printf("WARNING: Could not parse $COMMENTS_EMAIL_PORT (%s) as an integer: %s email notifications will not work!\n", emailPortString, err)
 		emailNotificationsDisabled = true
 	}
 	emailUsername = os.ExpandEnv(emailUsername)
 	emailPassword = os.ExpandEnv(emailPassword)
-	emailNotificationTarget = os.ExpandEnv(emailNotificationTarget)
+	adminEmailNotificationTarget = os.ExpandEnv(adminEmailNotificationTarget)
 	if emailHost == "" {
-		log.Printf("COMMENTS_EMAIL_HOST is not set; email notifications will not work!")
+		log.Printf("COMMENTS_EMAIL_HOST is not set; email notifications will not work!\n")
 		emailNotificationsDisabled = true
 	}
 	if emailUsername == "" {
-		log.Printf("COMMENTS_EMAIL_USER is not set; email notifications will not work!")
+		log.Printf("COMMENTS_EMAIL_USER is not set; email notifications will not work!\n")
 		emailNotificationsDisabled = true
 	}
 	if emailPassword == "" {
-		log.Printf("COMMENTS_EMAIL_PASSWORD is not set; email notifications will not work!")
+		log.Printf("COMMENTS_EMAIL_PASSWORD is not set; email notifications will not work!\n")
 		emailNotificationsDisabled = true
 	}
-	if emailNotificationTarget == "" {
-		log.Printf("COMMENTS_NOTIFICATION_TARGET is not set; admin email notifications will not work!")
+	if adminEmailNotificationTarget == "" {
+		log.Printf("COMMENTS_NOTIFICATION_TARGET is not set; admin email notifications will not work!\n")
 	}
 	hashSalt = os.ExpandEnv(hashSalt)
 	if hashSalt == "" {
-		log.Printf("info: COMMENTS_HASH_SALT environment variable is not set. using the default value. for best practice, set this variable to a long random string")
+		log.Printf("info: COMMENTS_HASH_SALT environment variable is not set. using the default value. for best practice, set this variable to a long random string\n")
 		hashSalt = "983q4gh_8778g4ilb.sDkjg09834goj4p9-023u0_mjpmodsmg"
 	}
 	adminPassword = os.ExpandEnv(adminPassword)
@@ -242,7 +243,7 @@ func comments(response http.ResponseWriter, request *http.Request) {
 func admin(responseWriter http.ResponseWriter, request *http.Request) {
 	username, password, ok := request.BasicAuth()
 	if !ok || username != "admin" || password != adminPassword {
-		log.Printf("admin api auth fail: '%s:******', ok=%t", username, ok)
+		log.Printf("admin api auth fail: '%s:******', ok=%t\n", username, ok)
 
 		responseWriter.Header().Set("WWW-Authenticate", "Basic realm=\"comments admin\"")
 		responseWriter.WriteHeader(401)
@@ -267,7 +268,7 @@ func admin(responseWriter http.ResponseWriter, request *http.Request) {
 		htmlTemplate, err = template.New("admin").Parse(string(templateBytes))
 	}
 	if err != nil {
-		log.Printf("failed to load admin.html.gotemplate: %v", err)
+		log.Printf("failed to load admin.html.gotemplate: %v\n", err)
 		responseWriter.WriteHeader(500)
 		responseWriter.Write([]byte("500 internal server error"))
 		return
@@ -352,7 +353,7 @@ func admin(responseWriter http.ResponseWriter, request *http.Request) {
 	}
 
 	if err != nil {
-		log.Printf("failed to load admin api index page: %v", err)
+		log.Printf("failed to load admin api index page: %v\n", err)
 		responseWriter.WriteHeader(500)
 		responseWriter.Write([]byte("500 internal server error"))
 		return
@@ -384,17 +385,17 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 	var postedComment Comment
 	requestBody, err := ioutil.ReadAll(request.Body)
 	if err != nil {
-		log.Printf("http read error on post comment: %v", err)
+		log.Printf("http read error on post comment: %v\n", err)
 		return "internal server error"
 	}
 	err = json.Unmarshal(requestBody, &postedComment)
 	if err != nil {
-		log.Printf("bad request: error reading posted comment: %v", err)
+		log.Printf("bad request: error reading posted comment: %v\n", err)
 		return "bad request: malformed json"
 	}
 	err = validateCaptcha(postedComment.CaptchaChallenge, postedComment.CaptchaNonce)
 	if err != nil {
-		log.Printf("validateCaptcha failed: %v", err)
+		log.Printf("validateCaptcha failed: %v\n", err)
 		return "proof of work captcha failed"
 	}
 	if regexp.MustCompile(`^[\s\t\n\r]*$`).MatchString(postedComment.Body) {
@@ -488,11 +489,12 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 		return err
 	})
 	if err != nil {
-		log.Printf("boltdb error on post comment: %v", err)
+		log.Printf("boltdb error on post comment: %v\n", err)
 		return "database error"
 	}
 
 	if emailNotificationsDisabled {
+		log.Printf("skipping notifications because emailNotificationsDisabled == true\n")
 		return ""
 	}
 
@@ -571,7 +573,8 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 			}
 		}
 
-		if len(emailNotifications) == 0 {
+		if len(emailNotifications) == 0 && adminEmailNotificationTarget == "" {
+			log.Printf("skipping notifications because len(emailNotifications) == 0 && adminEmailNotificationTarget == \"\"\n")
 			return nil
 		}
 
@@ -599,32 +602,33 @@ func postComment(response http.ResponseWriter, request *http.Request, postID str
 			}
 			muteDocumentBytes, err := json.Marshal(muteDocument)
 			if err != nil {
-				log.Printf("couldn't send email notification to %s because couldn't json.Marshal(muteDocument)", email)
+				log.Printf("couldn't send email notification to %s because couldn't json.Marshal(muteDocument)\n", email)
 				continue
 			}
 
 			err = emailNotificationsBucket.Put([]byte(unsubID), []byte(email))
 			if err != nil {
-				log.Printf("couldn't send email notification to %s because couldn't save unsubID", email)
+				log.Printf("couldn't send email notification to %s because couldn't save unsubID\n", email)
 				continue
 			}
 			err = emailDocumentNotificationsBucket.Put([]byte(muteDocumentID), muteDocumentBytes)
 			if err != nil {
-				log.Printf("couldn't send email notification to %s because couldn't save muteDocument", email)
+				log.Printf("couldn't send email notification to %s because couldn't save muteDocument\n", email)
 				continue
 			}
 
 			go sendEmailNotification(email, &postedComment, notifiedComment, unsubID, muteDocumentID)
 		}
 
-		_, adminEmailIsAlreadyNotified := emailNotifications[emailNotificationTarget]
-		if emailNotificationTarget != "" && !adminEmailIsAlreadyNotified {
+		_, adminEmailIsAlreadyNotified := emailNotifications[adminEmailNotificationTarget]
+		if adminEmailNotificationTarget != "" && !adminEmailIsAlreadyNotified {
 			fakeAdminNotifiedComment := Comment{
 				URL:           postedComment.URL,
 				DocumentTitle: postedComment.DocumentTitle,
 				Username:      "Admin",
 			}
-			go sendEmailNotification(emailNotificationTarget, &postedComment, &fakeAdminNotifiedComment, "admin_notification", "admin_notification")
+
+			go sendEmailNotification(adminEmailNotificationTarget, &postedComment, &fakeAdminNotifiedComment, "admin_notification", "admin_notification")
 		}
 
 		return nil
@@ -666,7 +670,7 @@ func serveAvatar(response http.ResponseWriter, request *http.Request) {
 		response.Write([]byte("404 Not Found"))
 		return
 	} else if err != nil {
-		log.Printf("500 error in %s: %v", request.URL.Path, err)
+		log.Printf("500 error in %s: %v\n", request.URL.Path, err)
 		response.WriteHeader(500)
 		response.Write([]byte("500 server error"))
 		return
@@ -700,7 +704,7 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 		return nil
 	})
 	if err != nil {
-		log.Printf("boltdb read error: %v", err)
+		log.Printf("boltdb read error: %v\n", err)
 		response.WriteHeader(500)
 		response.Write([]byte("boltdb read error"))
 		return
@@ -735,7 +739,7 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 	if captchaChallenges == nil || len(captchaChallenges) == 0 {
 		err = loadCaptchaChallenges()
 		if err != nil {
-			log.Printf("loading captcha challenges failed: %v", err)
+			log.Printf("loading captcha challenges failed: %v\n", err)
 			response.WriteHeader(500)
 			response.Write([]byte("captcha api error"))
 			return
@@ -761,7 +765,7 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 
 	responseBytes, err := json.Marshal(commentsData)
 	if err != nil {
-		log.Printf("json marshal error: %v", err)
+		log.Printf("json marshal error: %v\n", err)
 		response.WriteHeader(500)
 		response.Write([]byte("json marshal error"))
 		return
@@ -905,7 +909,7 @@ func disableNotification(responseWriter http.ResponseWriter, request *http.Reque
 		return nil
 	})
 	if err != nil {
-		log.Printf("failed to disable notifications disableID=%s: %v", disableID, err)
+		log.Printf("failed to disable notifications disableID=%s: %v\n", disableID, err)
 		responseWriter.Header().Set("Content-Type", "text/plain")
 		responseWriter.WriteHeader(500)
 		responseWriter.Write([]byte("500 internal server error"))
@@ -938,7 +942,7 @@ func unsubscribeNotification(responseWriter http.ResponseWriter, request *http.R
 		return nil
 	})
 	if err != nil {
-		log.Printf("failed to unsubscribe unsubID=%s: %v", unsubID, err)
+		log.Printf("failed to unsubscribe unsubID=%s: %v\n", unsubID, err)
 		responseWriter.Header().Set("Content-Type", "text/plain")
 		responseWriter.WriteHeader(500)
 		responseWriter.Write([]byte("500 internal server error"))
@@ -946,6 +950,19 @@ func unsubscribeNotification(responseWriter http.ResponseWriter, request *http.R
 }
 
 func sendEmailNotification(email string, postedComment, notifiedComment *Comment, unsubID, muteDocumentID string) {
+
+	// since this will be called in a goroutine, we need to do this in case we hit a panic(),
+	// otherwise it will fail silently...?
+	defer (func() {
+		if r := recover(); r != nil {
+			fmt.Printf("sendEmailNotification(): panic: %v\n", r)
+			debug.PrintStack()
+		}
+	})()
+
+	log.Printf("attempting to send email notification to %s because <%s,%s> replied (on '%s', unsubID=%s)\n",
+		email, postedComment.Username, postedComment.Email, notifiedComment.DocumentTitle, unsubID)
+
 	addressedTo := notifiedComment.Username
 	if addressedTo == "" {
 		addressedTo = "Commenter"
@@ -1012,7 +1029,7 @@ Powered by <a style="font-size:0.9em" href="https://git.sequentialread.com/fores
 
 	err := sendEmail(email, fmt.Sprintf("New Reply on '%s'", notifiedComment.DocumentTitle), bodyPlain, bodyHTML)
 	if err != nil {
-		log.Printf("email delivery issue for %s: %v", email, err)
+		log.Printf("email delivery issue for %s: %v\n", email, err)
 	}
 }
 
@@ -1110,12 +1127,12 @@ func generateIdenticonPNG(input string) []byte {
 		}
 	}
 
-	baseColor := HSVColor(
+	baseColor := hsvColor(
 		baseHue,
 		float64(0.68)+(float64(randomSource.Int63()%80)/float64(255)),
 		float64(0.10)+(float64(randomSource.Int63()%50)/float64(255)),
 	)
-	highlightColor := HSVColor(
+	highlightColor := hsvColor(
 		highlightHue,
 		float64(0.47)+(float64(randomSource.Int63()%80)/float64(255)),
 		float64(0.6)+(float64(randomSource.Int63()%80)/float64(255)),
@@ -1188,7 +1205,7 @@ func generateIdenticonPNG(input string) []byte {
 	return []byte(buffer.Bytes())
 }
 
-func HSVColor(H, S, V float64) color.RGBA {
+func hsvColor(H, S, V float64) color.RGBA {
 	Hp := H / 60.0
 	C := V * S
 	X := C * (1.0 - math.Abs(math.Mod(Hp, 2.0)-1.0))

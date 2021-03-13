@@ -1,0 +1,13 @@
+git.sequentialread.com/forest/pkg-errors v0.9.2 h1:j6pwbL6E+TmE7TD0tqRtGwuoCbCfO6ZR26Nv5nest9g=
+git.sequentialread.com/forest/pkg-errors v0.9.2/go.mod h1:8TkJ/f8xLWFIAid20aoqgDZcCj9QQt+FU+rk415XO1w=
+github.com/boltdb/bolt v1.3.1 h1:JQmyP4ZBrce+ZQu0dY660FMfatumYDLun9hBCUVIkF4=
+github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
+github.com/gomarkdown/markdown v0.0.0-20210208175418-bda154fe17d8 h1:nWU6p08f1VgIalT6iZyqXi4o5cZsz4X6qa87nusfcsc=
+github.com/gomarkdown/markdown v0.0.0-20210208175418-bda154fe17d8/go.mod h1:aii0r/K0ZnHv7G0KF7xy1v0A7s2Ljrb5byB7MO5p6TU=
+github.com/sym01/htmlsanitizer v1.0.1 h1:a+r9gDExjeJsvENRTW/cxyGuloCJF0s1dcwr83MctGY=
+github.com/sym01/htmlsanitizer v1.0.1/go.mod h1:zazTkJ727MJTDrNcWDaOLlAgGMcsDNG94LJi6vYl6Ug=
+github.com/xhit/go-simple-mail v2.2.2+incompatible h1:Hm2VGfLqiQJ/NnC8SYsrPOPyVYIlvP2kmnotP4RIV74=
+github.com/xhit/go-simple-mail v2.2.2+incompatible/go.mod h1:I8Ctg6vIJZ+Sv7k/22M6oeu/tbFumDY0uxBuuLbtU7Y=
+golang.org/dl v0.0.0-20190829154251-82a15e2f2ead/go.mod h1:IUMfjQLJQd4UTqG1Z90tenwKoCX93Gn3MAQJMOSBsDQ=
+golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 h1:46ULzRKLh1CwgRq2dC5SlBzEqqNCi8rreOZnNrbqcIY=
+golang.org/x/sys v0.0.0-20210309074719-68d13333faf2/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
