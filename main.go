@@ -63,7 +63,8 @@ type CommentedDocument struct {
 var origins []string
 var portString = "$COMMENTS_LISTEN_PORT"
 var captchaAPIToken = "$COMMENTS_CAPTCHA_API_TOKEN"
-var captchaAPIURLString = "$COMMENTS_CAPTCHA_URL"
+var captchaAPIURLString = "$COMMENTS_CAPTCHA_API_URL"
+var captchaPublicURLString = "$COMMENTS_CAPTCHA_PUBLIC_URL"
 var commentsBasePath = "$COMMENTS_BASE_PATH"
 var commentsURLString = "$COMMENTS_BASE_URL"
 
@@ -72,6 +73,7 @@ var commentsURLString = "$COMMENTS_BASE_URL"
 var captchaDifficultyLevelString = "$COMMENTS_CAPTCHA_DIFFICULTY_LEVEL"
 var captchaDifficultyLevel int
 var captchaAPIURL *url.URL
+var captchaPublicURL *url.URL
 var loadCaptchaChallengesMutex *sync.Mutex
 var captchaChallengesMutex *sync.Mutex
 var loadCaptchaChallengesMutexIsProbablyLocked = false
@@ -118,10 +120,17 @@ func main() {
 	log.Printf("Allowed CORS Origins: [\n%s\n]\n", strings.Join(origins, "\n"))
 
 	captchaAPIToken = os.ExpandEnv(captchaAPIToken)
+
 	captchaAPIURLString = os.ExpandEnv(captchaAPIURLString)
 	captchaAPIURL, err = url.Parse(captchaAPIURLString)
-	if err != nil {
-		panic(errors.Wrapf(err, "can't parse COMMENTS_CAPTCHA_URL '%s' as url", captchaAPIURLString))
+	if err != nil || captchaAPIURLString == "" {
+		panic(errors.Wrapf(err, "can't parse COMMENTS_CAPTCHA_API_URL '%s' as url", captchaAPIURLString))
+	}
+
+	captchaPublicURLString = os.ExpandEnv(captchaPublicURLString)
+	captchaPublicURL, err = url.Parse(captchaPublicURLString)
+	if err != nil || captchaPublicURLString == "" {
+		panic(errors.Wrapf(err, "can't parse COMMENTS_CAPTCHA_PUBLIC_URL '%s' as url", captchaPublicURLString))
 	}
 
 	captchaDifficultyLevelString = os.ExpandEnv(captchaDifficultyLevelString)
@@ -757,7 +766,7 @@ func returnCommentsList(response http.ResponseWriter, postID, couldNotPostReason
 		Comments         []*Comment `json:"comments"`
 		Error            string     `json:"error"`
 	}{
-		CaptchaURL:       captchaAPIURL.String(),
+		CaptchaURL:       captchaPublicURL.String(),
 		CaptchaChallenge: challenge,
 		Comments:         rootComments,
 		Error:            couldNotPostReason,

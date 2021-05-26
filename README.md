@@ -111,14 +111,15 @@ The hexadecimal string which was obtained by [creating a new API token on the ðŸ
 
 ----
 
+#### COMMENTS_CAPTCHA_API_URL
+
+Used to contact the captcha server & get captcha challenges
+
+----
+
 #### COMMENTS_CAPTCHA_URL
 
-Currently this variable is used for two different things.
-
-1. It is used to contact the captcha server & get captcha challenges.
-2. It is used to load the captcha JavaScript and CSS into the page.
-
-For that reason, this URL must be reachable from both the comments server and the public internet at large. This may change in the future, let me know if this causes a problem for you. Or you can just fix it yourself ðŸ˜‡
+Used to load the captcha JavaScript and CSS into the page
 
 ----
 
